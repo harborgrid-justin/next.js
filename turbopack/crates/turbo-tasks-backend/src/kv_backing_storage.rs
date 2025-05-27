@@ -46,7 +46,7 @@ const POT_CONFIG: pot::Config = pot::Config::new().compatibility(pot::Compatibil
 
 fn pot_serialize_small_vec<T: Serialize>(
     value: &T,
-) -> anyhow::Result<(SmallVec<[u8; 16]>, RcStrToLocalId)> {
+) -> Result<(SmallVec<[u8; 16]>, RcStrToLocalId)> {
     struct SmallVecWrite<'l>(&'l mut SmallVec<[u8; 16]>);
     impl std::io::Write for SmallVecWrite<'_> {
         #[inline]
@@ -307,7 +307,7 @@ impl<T: KeyValueDatabase + Send + Sync + 'static> BackingStorageSealed
             else {
                 return Ok(Vec::new());
             };
-            let operations = deserialize_with_good_error(operations.borrow())?;
+            let operations = deserialize_with_good_error(database, &tx, operations.borrow())?;
             Ok(operations)
         }
         get(&self.inner.database).context("Unable to read uncompleted operations from database")
@@ -589,7 +589,11 @@ impl<T: KeyValueDatabase + Send + Sync + 'static> BackingStorageSealed
             else {
                 return Ok(None);
             };
-            Ok(Some(deserialize_with_good_error(bytes.borrow())?))
+            Ok(Some(deserialize_with_good_error(
+                database,
+                tx,
+                bytes.borrow(),
+            )?))
         }
         inner
             .with_tx(tx, |tx| lookup(&inner.database, tx, task_id))
@@ -621,7 +625,8 @@ impl<T: KeyValueDatabase + Send + Sync + 'static> BackingStorageSealed
             else {
                 return Ok(Vec::new());
             };
-            let result: Vec<CachedDataItem> = deserialize_with_good_error(bytes.borrow())?;
+            let result: Vec<CachedDataItem> =
+                deserialize_with_good_error(database, tx, bytes.borrow())?;
             Ok(result)
         }
         inner
@@ -885,17 +890,21 @@ fn serialize(
     })
 }
 
-fn deserialize_with_good_error<'de, T: Deserialize<'de>>(data: &'de [u8]) -> Result<T> {
-    let (global_ids, bytes) = LocalIdToGlobalId::read_from_slice(data)?;
+fn deserialize_with_good_error<'de, D: KeyValueDatabase, T: Deserialize<'de>>(
+    database: &D,
+    tx: &D::ReadTransaction<'_>,
+    data: &'de [u8],
+) -> Result<T> {
+    let (global_ids, data) = LocalIdToGlobalId::read_from_slice(data)?;
     let map = restore_strings(database, tx, &global_ids)?;
 
-    match interning_serde::from_slice(&POT_CONFIG, bytes, &map) {
+    match interning_serde::from_slice::<T>(&POT_CONFIG, data, &map) {
         Ok(value) => Ok(value),
         Err(error) => serde_path_to_error::deserialize::<'_, _, T>(
             &mut pot_de_symbol_list().deserializer_for_slice(data)?,
         )
         .map_err(anyhow::Error::from)
-        .and(Err(error.into()))
+        .and(Err(error))
         .context("Deserialization failed"),
     }
 }

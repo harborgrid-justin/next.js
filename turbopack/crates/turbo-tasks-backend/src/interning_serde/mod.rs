@@ -2,7 +2,7 @@
 
 use std::io::Write;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use turbo_rcstr::RcStr;
 use turbo_tasks::FxIndexSet;
 
@@ -92,9 +92,9 @@ where
     Ok(RcStrToLocalId(ser_map))
 }
 
-pub fn from_slice<T>(
+pub fn from_slice<'de, T>(
     config: &pot::Config,
-    bytes: &[u8],
+    bytes: &'de [u8],
     de_map: &LocalIdToRcStr,
 ) -> anyhow::Result<T>
 where
