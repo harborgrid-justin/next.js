@@ -1158,6 +1158,7 @@ export default async function loadConfig(
     rawConfig,
     silent = true,
     reportExperimentalFeatures,
+    validateConfig,
     reactProductionProfiling,
     debugPrerender,
   }: {
@@ -1167,6 +1168,7 @@ export default async function loadConfig(
     reportExperimentalFeatures?: (
       configuredExperimentalFeatures: ConfiguredExperimentalFeature[]
     ) => void
+    validateConfig?: boolean
     reactProductionProfiling?: boolean
     debugPrerender?: boolean
   } = {}
@@ -1295,13 +1297,16 @@ export default async function loadConfig(
     // Clone a new userConfig each time to avoid mutating the original
     const userConfig = cloneObject(loadedConfig) as NextConfig
 
-    if (!process.env.NEXT_MINIMAL) {
+    // Only validate the config against schema in:
+    // * non minimal mode
+    // * when `loadConfig` result is not silent
+    if (!process.env.NEXT_MINIMAL && validateConfig) {
       // We only validate the config against schema in non minimal mode
       const { configSchema } =
         require('./config-schema') as typeof import('./config-schema')
       const state = configSchema.safeParse(userConfig)
 
-      if (state.success === false) {
+      if (!state.success) {
         // error message header
         const messages = [`Invalid ${configFileName} options detected: `]
 

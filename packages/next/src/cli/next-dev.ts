@@ -219,7 +219,10 @@ const nextDev = async (
   // some set-ups that rely on listening on other interfaces
   const host = options.hostname
 
-  config = await loadConfig(PHASE_DEVELOPMENT_SERVER, dir)
+  config = await loadConfig(PHASE_DEVELOPMENT_SERVER, dir, {
+    validateConfig: true,
+    silent: false,
+  })
 
   if (
     options.experimentalUploadTrace &&
