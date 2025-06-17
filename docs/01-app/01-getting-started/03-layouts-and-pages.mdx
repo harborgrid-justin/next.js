@@ -247,6 +247,139 @@ export default async function BlogPostPage({ params }) {
 
 Learn more about [Dynamic Segments](/docs/app/api-reference/file-conventions/dynamic-routes).
 
+In client components, dynamic params can be accessed using the `use` hook, or the `useParams` hook.
+
+```tsx filename="app/blog/[slug]/page.tsx" switcher
+'use client'
+import { use } from 'react'
+import { useParams } from 'next/navigation'
+
+export default function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const fromProps = use(params)
+  const fromHook = useParams()
+
+  return (
+    <div>
+      <p>{fromProps.slug}</p>
+      <p>{fromHook.slug}</p>
+    </div>
+  )
+}
+```
+
+```jsx filename="app/blog/[slug]/page.js" switcher
+'use client'
+import { use } from 'react'
+import { useParams } from 'next/navigation'
+
+export default function BlogPostPage({ params }) {
+  const fromProps = use(params)
+  const fromHook = useParams()
+
+  return (
+    <div>
+      <p>{fromProps.slug}</p>
+      <p>{fromHook.slug}</p>
+    </div>
+  )
+}
+```
+
+## Rendering with search params
+
+### `searchParams`
+
+In a Server Component **page**, you can access search parameters using the `searchParams` prop:
+
+```tsx filename="app/page.tsx" switcher
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const { from } = await searchParams
+
+  // validate that `from` can be parsed into a valid date
+
+  // query your database for records `from`
+
+  return <div>{/* render records */}</div>
+}
+```
+
+```jsx filename="app/page.jsx" switcher
+export default async function Page({ searchParams }) {
+  const { from } = await searchParams
+
+  // validate that `from` can be parsed into a valid date
+
+  // query your database for records `from`
+
+  return <div>{/* render records */}</div>
+}
+```
+
+Using `searchParams` opts your page into [**dynamic rendering**](/docs/app/getting-started/partial-prerendering#dynamic-rendering) because it requires a incoming request to read the search parameters from.
+
+Client Component **pages** can also access `searchParams` using React’s `use` hook:
+
+```tsx filename="app/page.tsx" switcher
+'use client'
+import { use } from 'react'
+
+export default function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const { from } = use(searchParams)
+
+  // validate that `from` can be parsed into a valid date
+
+  // query your database for records `from`
+
+  return <div>{/* render records */}</div>
+}
+```
+
+```jsx filename="app/page.jsx" switcher
+'use client'
+import { use } from 'react'
+
+export default function Page({ searchParams }) {
+  const { from } = use(searchParams)
+
+  // validate that `from` can be parsed into a valid date
+
+  // query your database for records `from`
+
+  return <div>{/* render records */}</div>
+}
+```
+
+Verify that the incoming request has [access rights](/docs/app/guides/authentication) to these records.
+
+### `useSearchParams`
+
+In a [**dynamically rendered**](/docs/app/getting-started/partial-prerendering#dynamic-rendering) page, Client Components can use the [`useSearchParams`](/docs/app/api-reference/functions/use-search-params) hook to read search parameters, without being opted-out from being server-side rendered. Learn more about [Client Components server side rendering](/docs/app/getting-started/server-and-client-components#on-the-server).
+
+In development, pages are rendered on-demand, this gives `useSearchParams` access to search params in the incoming request. This does not reflect production behavior for [static pages](/docs/app/getting-started/partial-prerendering#static-rendering), which are pre-rendered without a request.
+
+Accessing `useSearchParams` during pre-rendering will cause the Client Component tree up to the nearest Suspense boundary, to be client-side rendered. If there’s no such boundary pre-rendering fails.
+
+### What to use and when
+
+- Use the `searchParams` prop when you need search parameters to **load data for the page**  
+  (e.g. pagination, filtering from a database).
+- Use `useSearchParams` when search parameters are used **only on the client**  
+  (e.g. filtering a list already loaded via props).
+- As a small optimization, you can use `new URLSearchParams(window.location.search)` in **callbacks or event handlers**  
+  to read search params without triggering re-renders.
+
 ## Linking between pages
 
 You can use the [`<Link>` component](/docs/app/api-reference/components/link) to navigate between routes. `<Link>` is a built-in Next.js component that extends the HTML `<a>` tag to provide [prefetching](/docs/app/getting-started/linking-and-navigating#prefetching) and [client-side navigation](/docs/app/getting-started/linking-and-navigating#client-side-transitions).
