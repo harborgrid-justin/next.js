@@ -514,7 +514,7 @@ impl ProjectContainer {
     #[turbo_tasks::function]
     pub fn get_source_map(
         &self,
-        file_path: Vc<FileSystemPath>,
+        file_path: FileSystemPath,
         section: Option<RcStr>,
     ) -> Vc<OptionStringifiedSourceMap> {
         if let Some(map) = self.versioned_content_map {
@@ -599,7 +599,7 @@ impl ProjectDefineEnv {
 
 #[turbo_tasks::value(shared)]
 struct ConflictIssue {
-    path: ResolvedVc<FileSystemPath>,
+    path: FileSystemPath,
     title: ResolvedVc<StyledString>,
     description: ResolvedVc<StyledString>,
     severity: IssueSeverity,
@@ -1806,7 +1806,7 @@ pub struct ModuleGraphs {
 #[turbo_tasks::function]
 async fn any_output_changed(
     roots: Vc<OutputAssets>,
-    path: Vc<FileSystemPath>,
+    path: FileSystemPath,
     server: bool,
 ) -> Result<Vc<Completion>> {
     let path = &path.await?;
