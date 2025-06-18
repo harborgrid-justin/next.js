@@ -1,4 +1,16 @@
 {
+  "test/e2e/app-dir/nx-handling/nx-handling.test.ts": {
+    "passed": [],
+    "failed": [
+      "nx-handling should work for pages page",
+      "nx-handling should work for pages API",
+      "nx-handling should work with app page",
+      "nx-handling should work with app route"
+    ],
+    "pending": [],
+    "flakey": [],
+    "runtimeError": false
+  },
   "packages/font/src/google/find-font-files-in-css.test.ts": {
     "passed": [
       "findFontFilesInCss should find all font files and preload requested subsets",
@@ -879,6 +891,16 @@
       "ErrorOverlayLayout Component sends feedback when clicking helpful button",
       "ErrorOverlayLayout Component sends feedback when clicking not helpful button",
       "ErrorOverlayLayout Component voting buttons have aria-hidden icons"
+    ],
+    "failed": [],
+    "pending": [],
+    "flakey": [],
+    "runtimeError": false
+  },
+  "packages/next/src/next-devtools/dev-overlay/segment-explorer.test.tsx": {
+    "passed": [
+      "Segment Explorer add complex structure",
+      "Segment Explorer remove node in the middle"
     ],
     "failed": [],
     "pending": [],
@@ -2643,6 +2665,7 @@
   },
   "test/development/app-dir/segment-explorer/segment-explorer.test.ts": {
     "passed": [
+      "segment-explorer should cleanup on soft navigation",
       "segment-explorer should render the segment explorer for nested routes",
       "segment-explorer should render the segment explorer for parallel routes"
     ],
@@ -6186,22 +6209,6 @@
     "flakey": [],
     "runtimeError": false
   },
-  "test/e2e/app-dir/empty-fallback-shells/empty-fallback-shells.test.ts": {
-    "passed": [
-      "empty-fallback-shells with cached IO and the page not wrapped in Suspense and params.then/catch/finally passed to a cached function does not resume a postponed fallback shell",
-      "empty-fallback-shells with cached IO and the page not wrapped in Suspense and the params accessed in a cached non-page function does not resume a postponed fallback shell",
-      "empty-fallback-shells with cached IO and the page not wrapped in Suspense and the params accessed in the cached page does not render a fallback shell when using a params placeholder",
-      "empty-fallback-shells with cached IO and the page not wrapped in Suspense and the params accessed in the cached page does not resume a postponed fallback shell",
-      "empty-fallback-shells with cached IO and the page wrapped in Suspense and params.then/catch/finally passed to a cached function resumes a postponed fallback shell",
-      "empty-fallback-shells with cached IO and the page wrapped in Suspense and the params accessed in cached non-page function resumes a postponed fallback shell",
-      "empty-fallback-shells with cached IO and the page wrapped in Suspense and the params accessed in the cached page resumes a postponed fallback shell",
-      "empty-fallback-shells without IO should start and not postpone the response"
-    ],
-    "failed": [],
-    "pending": [],
-    "flakey": [],
-    "runtimeError": false
-  },
   "test/e2e/app-dir/error-boundary-navigation/index.test.ts": {
     "passed": [
       "app dir - not found navigation should allow navigating to a non-existent page",
@@ -6289,6 +6296,26 @@
     "passed": ["fallback-prefetch should prefetch the page without errors"],
     "failed": [],
     "pending": [],
+    "flakey": [],
+    "runtimeError": false
+  },
+  "test/e2e/app-dir/fallback-shells/fallback-shells.test.ts": {
+    "passed": [
+      "fallback-shells with cached IO and the page not wrapped in Suspense and params.then/catch/finally passed to a cached function does not resume a postponed fallback shell",
+      "fallback-shells with cached IO and the page not wrapped in Suspense and the params accessed in a cached non-page function does not resume a postponed fallback shell",
+      "fallback-shells with cached IO and the page not wrapped in Suspense and the params accessed in the cached page does not render a fallback shell when using a params placeholder",
+      "fallback-shells with cached IO and the page not wrapped in Suspense and the params accessed in the cached page does not resume a postponed fallback shell",
+      "fallback-shells with cached IO and the page wrapped in Suspense and params.then/catch/finally passed to a cached function resumes a postponed fallback shell",
+      "fallback-shells with cached IO and the page wrapped in Suspense and the params accessed in cached non-page function resumes a postponed fallback shell",
+      "fallback-shells with cached IO and the page wrapped in Suspense and the params accessed in the cached page resumes a postponed fallback shell",
+      "fallback-shells with cached IO and the page wrapped in Suspense and the params accessed in the cached page shares a cached parent layout between a prerendered route shell and the fallback shell",
+      "fallback-shells without IO should start and not postpone the response"
+    ],
+    "failed": [],
+    "pending": [
+      "fallback-shells with cached IO and the page wrapped in Suspense and the params accessed in the cached page does not produce hydration errors when resuming a fallback shell containing a layout with unused params",
+      "fallback-shells with cached IO and the page wrapped in Suspense and the params accessed in the cached page shares a cached layout with unused params between a prerendered route shell and the fallback shell"
+    ],
     "flakey": [],
     "runtimeError": false
   },
@@ -13755,9 +13782,7 @@
     "passed": [],
     "failed": [],
     "pending": [
-      "Browserslist: New production mode should have compiled successfully",
       "Browserslist: New production mode should've emitted a single CSS file",
-      "Browserslist: Old production mode should have compiled successfully",
       "Browserslist: Old production mode should've emitted a single CSS file"
     ],
     "flakey": [],

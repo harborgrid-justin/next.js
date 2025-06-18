@@ -603,18 +603,24 @@ impl<B: Backend + 'static> TurboTasks<B> {
                 self.schedule_local_task(task_type, persistence)
             }
             TaskPersistence::Transient => {
+                let immutable = registry::get_function(fn_type).function_meta.immutable;
                 let task_type = CachedTaskType { fn_type, this, arg };
+
                 RawVc::TaskOutput(self.backend.get_or_create_transient_task(
                     task_type,
                     current_task("turbo_function calls"),
+                    immutable,
                     self,
                 ))
             }
             TaskPersistence::Persistent => {
+                let immutable = registry::get_function(fn_type).function_meta.immutable;
                 let task_type = CachedTaskType { fn_type, this, arg };
+
                 RawVc::TaskOutput(self.backend.get_or_create_persistent_task(
                     task_type,
                     current_task("turbo_function calls"),
+                    immutable,
                     self,
                 ))
             }
@@ -946,27 +952,6 @@ impl<B: Backend + 'static> TurboTasks<B> {
         // INVALIDATION: This doesn't return a value, only waits for it to be ready.
         read_task_output_untracked(self, id, consistency).await?;
         Ok(())
-    }
-
-    #[deprecated(note = "Use get_or_wait_aggregated_update_info instead")]
-    pub async fn get_or_wait_update_info(&self, aggregation: Duration) -> (Duration, usize) {
-        let UpdateInfo {
-            duration, tasks, ..
-        } = self.get_or_wait_aggregated_update_info(aggregation).await;
-        (duration, tasks)
-    }
-
-    #[deprecated(note = "Use aggregated_update_info instead")]
-    pub async fn update_info(
-        &self,
-        aggregation: Duration,
-        timeout: Duration,
-    ) -> Option<(Duration, usize)> {
-        self.aggregated_update_info(aggregation, timeout).await.map(
-            |UpdateInfo {
-                 duration, tasks, ..
-             }| (duration, tasks),
-        )
     }
 
     /// Returns [UpdateInfo] with all updates aggregated over a given duration

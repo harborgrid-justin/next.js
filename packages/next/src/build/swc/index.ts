@@ -21,6 +21,7 @@ import { getReactCompilerLoader } from '../get-babel-loader-config'
 import type {
   NapiPartialProjectOptions,
   NapiProjectOptions,
+  NapiSourceDiagnostic,
 } from './generated-native'
 import type {
   Binding,
@@ -1151,6 +1152,23 @@ async function loadWasm(importPath = '') {
             return Promise.resolve(true)
           },
         },
+        rspack: {
+          getModuleNamedExports: function (
+            _resourcePath: string
+          ): Promise<string[]> {
+            throw new Error(
+              '`rspack.getModuleNamedExports` is not supported by the wasm bindings.'
+            )
+          },
+          warnForEdgeRuntime: function (
+            _source: string,
+            _isProduction: boolean
+          ): Promise<NapiSourceDiagnostic[]> {
+            throw new Error(
+              '`rspack.warnForEdgeRuntime` is not supported by the wasm bindings.'
+            )
+          },
+        },
       }
       return wasmBindings
     } catch (e: any) {
@@ -1327,6 +1345,19 @@ function loadNative(importPath?: string) {
           return bindings.isReactCompilerRequired(filename)
         },
       },
+      rspack: {
+        getModuleNamedExports: function (
+          resourcePath: string
+        ): Promise<string[]> {
+          return bindings.getModuleNamedExports(resourcePath)
+        },
+        warnForEdgeRuntime: function (
+          source: string,
+          isProduction: boolean
+        ): Promise<NapiSourceDiagnostic[]> {
+          return bindings.warnForEdgeRuntime(source, isProduction)
+        },
+      },
     }
     return nativeBindings
   }
@@ -1443,3 +1474,18 @@ export const teardownTraceSubscriber = once(() => {
     // Suppress exceptions, this fn allows to fail to load native bindings
   }
 })
+
+export async function getModuleNamedExports(
+  resourcePath: string
+): Promise<string[]> {
+  const bindings = await loadBindings()
+  return bindings.rspack.getModuleNamedExports(resourcePath)
+}
+
+export async function warnForEdgeRuntime(
+  source: string,
+  isProduction: boolean
+): Promise<NapiSourceDiagnostic[]> {
+  const bindings = await loadBindings()
+  return bindings.rspack.warnForEdgeRuntime(source, isProduction)
+}

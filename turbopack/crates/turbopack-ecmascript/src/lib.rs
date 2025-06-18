@@ -71,8 +71,8 @@ pub use transform::{
 };
 use turbo_rcstr::rcstr;
 use turbo_tasks::{
-    FxIndexMap, NonLocalValue, ReadRef, ResolvedVc, TaskInput, TryJoinIterExt, ValueToString, Vc,
-    trace::TraceRawVcs,
+    FxIndexMap, IntoTraitRef, NonLocalValue, ReadRef, ResolvedVc, TaskInput, TryJoinIterExt,
+    ValueToString, Vc, trace::TraceRawVcs,
 };
 use turbo_tasks_fs::{FileJsonContent, FileSystemPath, glob::Glob, rope::Rope};
 use turbopack_core::{
@@ -330,7 +330,7 @@ pub trait EcmascriptAnalyzable: Module + Asset {
     ) -> Result<Vc<EcmascriptModuleContentOptions>>;
 
     #[turbo_tasks::function]
-    async fn module_content(
+    fn module_content(
         self: Vc<Self>,
         module_graph: Vc<ModuleGraph>,
         chunking_context: Vc<Box<dyn ChunkingContext>>,
@@ -395,7 +395,7 @@ impl ModuleTypeResult {
 
 #[turbo_tasks::value_impl]
 impl EcmascriptParsable for EcmascriptModuleAsset {
-    #[turbo_tasks::function]
+    #[turbo_tasks::function(invalidator)]
     async fn failsafe_parse(self: Vc<Self>) -> Result<Vc<ParseResult>> {
         let real_result = self.parse();
         let this = self.await?;
@@ -645,12 +645,12 @@ impl Module for EcmascriptModuleAsset {
             }
         }
         ident.add_modifier(rcstr!("ecmascript"));
-        ident.layer = Some(self.asset_context.layer().owned().await?);
+        ident.layer = Some(self.asset_context.into_trait_ref().await?.layer());
         Ok(AssetIdent::new(ident))
     }
 
     #[turbo_tasks::function]
-    async fn references(self: Vc<Self>) -> Result<Vc<ModuleReferences>> {
+    fn references(self: Vc<Self>) -> Result<Vc<ModuleReferences>> {
         Ok(self.analyze().references())
     }
 

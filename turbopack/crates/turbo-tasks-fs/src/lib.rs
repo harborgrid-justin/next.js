@@ -521,7 +521,7 @@ impl DiskFileSystem {
     ///   be a full path, since it is possible that root & project dir is different and requires to
     ///   ignore specific subpaths from each.
     #[turbo_tasks::function]
-    pub async fn new(name: RcStr, root: RcStr, ignored_subpaths: Vec<RcStr>) -> Result<Vc<Self>> {
+    pub fn new(name: RcStr, root: RcStr, ignored_subpaths: Vec<RcStr>) -> Result<Vc<Self>> {
         mark_stateful();
 
         let instance = DiskFileSystem {
@@ -551,7 +551,7 @@ impl Debug for DiskFileSystem {
 
 #[turbo_tasks::value_impl]
 impl FileSystem for DiskFileSystem {
-    #[turbo_tasks::function(fs)]
+    #[turbo_tasks::function(fs, invalidator)]
     async fn read(&self, fs_path: Vc<FileSystemPath>) -> Result<Vc<FileContent>> {
         mark_session_dependent();
         let full_path = self.to_sys_path(fs_path).await?;
@@ -577,7 +577,7 @@ impl FileSystem for DiskFileSystem {
         Ok(content.cell())
     }
 
-    #[turbo_tasks::function(fs)]
+    #[turbo_tasks::function(fs, invalidator)]
     async fn raw_read_dir(&self, fs_path: Vc<FileSystemPath>) -> Result<Vc<RawDirectoryContent>> {
         mark_session_dependent();
         let full_path = self.to_sys_path(fs_path).await?;
@@ -632,7 +632,7 @@ impl FileSystem for DiskFileSystem {
         Ok(RawDirectoryContent::new(entries))
     }
 
-    #[turbo_tasks::function(fs)]
+    #[turbo_tasks::function(fs, invalidator)]
     async fn read_link(&self, fs_path: Vc<FileSystemPath>) -> Result<Vc<LinkContent>> {
         mark_session_dependent();
         let full_path = self.to_sys_path(fs_path).await?;
@@ -718,7 +718,7 @@ impl FileSystem for DiskFileSystem {
         .cell())
     }
 
-    #[turbo_tasks::function(fs)]
+    #[turbo_tasks::function(fs, invalidator)]
     async fn write(&self, fs_path: Vc<FileSystemPath>, content: Vc<FileContent>) -> Result<()> {
         mark_session_dependent();
         let full_path = self.to_sys_path(fs_path).await?;
@@ -843,7 +843,7 @@ impl FileSystem for DiskFileSystem {
         Ok(())
     }
 
-    #[turbo_tasks::function(fs)]
+    #[turbo_tasks::function(fs, invalidator)]
     async fn write_link(&self, fs_path: Vc<FileSystemPath>, target: Vc<LinkContent>) -> Result<()> {
         mark_session_dependent();
         let full_path = self.to_sys_path(fs_path).await?;
@@ -962,7 +962,7 @@ impl FileSystem for DiskFileSystem {
         Ok(())
     }
 
-    #[turbo_tasks::function(fs)]
+    #[turbo_tasks::function(fs, invalidator)]
     async fn metadata(&self, fs_path: Vc<FileSystemPath>) -> Result<Vc<FileMeta>> {
         mark_session_dependent();
         let full_path = self.to_sys_path(fs_path).await?;

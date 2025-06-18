@@ -1,6 +1,6 @@
 use anyhow::Result;
 use turbo_rcstr::rcstr;
-use turbo_tasks::{ResolvedVc, TryJoinIterExt, ValueToString, Vc};
+use turbo_tasks::{IntoTraitRef, ResolvedVc, TryJoinIterExt, ValueToString, Vc};
 use turbo_tasks_fs::FileSystemPath;
 use turbopack_core::{
     asset::{Asset, AssetContent},
@@ -121,7 +121,7 @@ impl Module for CssModuleAsset {
             .source
             .ident()
             .with_modifier(rcstr!("css"))
-            .with_layer(self.asset_context.layer().owned().await?);
+            .with_layer(self.asset_context.into_trait_ref().await?.layer());
         if let Some(import_context) = self.import_context {
             ident = ident.with_modifier(import_context.modifier().owned().await?)
         }
