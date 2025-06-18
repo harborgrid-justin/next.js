@@ -1267,10 +1267,12 @@ export default async function loadConfig(
       throw err
     }
 
-    const userConfig = (await normalizeConfig(
+    // Clone a new userConfig each time to avoid mutating the original
+    const loadedConfig = (await normalizeConfig(
       phase,
-      userConfigModule.default || userConfigModule
+      interopDefault(userConfigModule)
     )) as NextConfig
+    const userConfig = cloneObject(loadedConfig) as NextConfig
 
     if (!process.env.NEXT_MINIMAL) {
       // We only validate the config against schema in non minimal mode
@@ -1388,7 +1390,7 @@ export default async function loadConfig(
       userConfig.htmlLimitedBots = userConfig.htmlLimitedBots.source
     }
 
-    onLoadUserConfig?.(userConfig)
+    onLoadUserConfig?.(Object.freeze(loadedConfig))
     const completeConfig = assignDefaults(
       dir,
       {
@@ -1475,4 +1477,23 @@ export function getConfiguredExperimentalFeatures(
     }
   }
   return configuredExperimentalFeatures
+}
+
+function cloneObject(obj: any): any {
+  if (obj === null || typeof obj !== 'object') {
+    return obj
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(cloneObject)
+  }
+  const keys = Object.keys(obj)
+  if (keys.length === 0) {
+    return obj
+  }
+
+  return keys.reduce((acc, key) => {
+    ;(acc as any)[key] = cloneObject(obj[key])
+    return acc
+  }, {})
 }

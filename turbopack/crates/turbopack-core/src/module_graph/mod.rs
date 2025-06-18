@@ -567,7 +567,7 @@ impl SingleModuleGraph {
             Option<(&'a SingleModuleGraphModuleNode, &'a RefData)>,
             &'a SingleModuleGraphNode,
             &mut S,
-        ),
+        ) -> Result<()>,
     ) -> Result<()> {
         let graph = &self.graph;
         let entries = entries.into_iter().map(|e| self.get_module(e).unwrap());
@@ -596,7 +596,7 @@ impl SingleModuleGraph {
             });
             match pass {
                 TopologicalPass::Visit => {
-                    visit_postorder(parent_arg, graph.node_weight(current).unwrap(), state);
+                    visit_postorder(parent_arg, graph.node_weight(current).unwrap(), state)?;
                 }
                 TopologicalPass::ExpandAndVisit => match graph.node_weight(current).unwrap() {
                     current_node @ SingleModuleGraphNode::Module(_) => {
@@ -619,7 +619,7 @@ impl SingleModuleGraph {
                     }
                     current_node @ SingleModuleGraphNode::VisitedModule { .. } => {
                         visit_preorder(parent_arg, current_node, state)?;
-                        visit_postorder(parent_arg, current_node, state);
+                        visit_postorder(parent_arg, current_node, state)?;
                     }
                 },
             }
@@ -1307,7 +1307,7 @@ impl ModuleGraph {
             Option<(&'_ SingleModuleGraphModuleNode, &'_ RefData)>,
             &'_ SingleModuleGraphModuleNode,
             &mut S,
-        ),
+        ) -> Result<()>,
     ) -> Result<()> {
         let graphs = self.get_graphs().await?;
 
@@ -1345,7 +1345,7 @@ impl ModuleGraph {
             let current_node = get_node!(graphs, current)?;
             match pass {
                 TopologicalPass::Visit => {
-                    visit_postorder(parent_arg, current_node, state);
+                    visit_postorder(parent_arg, current_node, state)?;
                 }
                 TopologicalPass::ExpandAndVisit => {
                     let action = visit_preorder(parent_arg, current_node, state)?;

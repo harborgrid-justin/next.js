@@ -954,27 +954,6 @@ impl<B: Backend + 'static> TurboTasks<B> {
         Ok(())
     }
 
-    #[deprecated(note = "Use get_or_wait_aggregated_update_info instead")]
-    pub async fn get_or_wait_update_info(&self, aggregation: Duration) -> (Duration, usize) {
-        let UpdateInfo {
-            duration, tasks, ..
-        } = self.get_or_wait_aggregated_update_info(aggregation).await;
-        (duration, tasks)
-    }
-
-    #[deprecated(note = "Use aggregated_update_info instead")]
-    pub async fn update_info(
-        &self,
-        aggregation: Duration,
-        timeout: Duration,
-    ) -> Option<(Duration, usize)> {
-        self.aggregated_update_info(aggregation, timeout).await.map(
-            |UpdateInfo {
-                 duration, tasks, ..
-             }| (duration, tasks),
-        )
-    }
-
     /// Returns [UpdateInfo] with all updates aggregated over a given duration
     /// (`aggregation`). Will wait until an update happens.
     pub async fn get_or_wait_aggregated_update_info(&self, aggregation: Duration) -> UpdateInfo {

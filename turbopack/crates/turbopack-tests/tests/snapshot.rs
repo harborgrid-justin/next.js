@@ -12,8 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 use turbo_rcstr::{RcStr, rcstr};
 use turbo_tasks::{
-    ReadConsistency, ReadRef, ResolvedVc, TryJoinIterExt, TurboTasks, ValueToString, Vc,
-    apply_effects,
+    ReadConsistency, ReadRef, ResolvedVc, TurboTasks, ValueToString, Vc, apply_effects,
 };
 use turbo_tasks_backend::{BackendOptions, TurboTasksBackend, noop_backing_storage};
 use turbo_tasks_env::DotenvProcessEnv;
@@ -308,10 +307,12 @@ async fn run_test_operation(resource: RcStr) -> Result<Vc<FileSystemPath>> {
             rules: vec![(
                 ContextCondition::InDirectory("node_modules".into()),
                 ModuleOptionsContext {
-                    remove_unused_exports: options.remove_unused_exports,
                     css: CssOptionsContext {
                         ..Default::default()
                     },
+                    preset_env_versions: Some(env),
+                    tree_shaking_mode: options.tree_shaking_mode,
+                    remove_unused_exports: options.remove_unused_exports,
                     ..Default::default()
                 }
                 .resolved_cell(),
@@ -493,11 +494,7 @@ async fn walk_asset(
             .await?
             .iter()
             .copied()
-            .map(|asset| async move { Ok(ResolvedVc::try_downcast::<Box<dyn OutputAsset>>(asset)) })
-            .try_join()
-            .await?
-            .into_iter()
-            .flatten(),
+            .flat_map(ResolvedVc::try_downcast::<Box<dyn OutputAsset>>),
     );
 
     Ok(())

@@ -1778,7 +1778,7 @@ describe('app-dir action handling', () => {
     })
 
     it.each(['307', '308'])(
-      `redirects properly when server action handler redirects with a %s status code`,
+      `redirects properly when route handler redirects with a %s status code`,
       async (statusCode) => {
         const postRequests = []
         const responseCodes = []

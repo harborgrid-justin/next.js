@@ -696,9 +696,14 @@ export interface ExperimentalConfig {
   globalNotFound?: boolean
 
   /**
-   * Enable segment viewer for the app directory in dev tool.
+   * Enable segment viewer for the app directory in Next.js DevTools.
    */
   devtoolSegmentExplorer?: boolean
+
+  /**
+   * Enable new panel UI for the Next.js DevTools.
+   */
+  devtoolNewPanelUI?: boolean
 }
 
 export type ExportPathMap = {

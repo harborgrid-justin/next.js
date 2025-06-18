@@ -2642,6 +2642,7 @@ export default abstract class Server<
             // propagate the request context for dev
             setRequestMeta(request, getRequestMeta(req))
             addRequestMeta(request, 'projectDir', this.dir)
+            addRequestMeta(request, 'distDir', this.distDir)
             addRequestMeta(request, 'isIsrFallback', pagesFallback)
             addRequestMeta(request, 'query', query)
             addRequestMeta(request, 'params', opts.params)

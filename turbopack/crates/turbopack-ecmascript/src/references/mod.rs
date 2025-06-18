@@ -157,8 +157,8 @@ use crate::{
         util::InlineSourceMap,
     },
     runtime_functions::{
-        TUBROPACK_RUNTIME_FUNCTION_SHORTCUTS, TURBOPACK_EXPORT_NAMESPACE, TURBOPACK_EXPORT_VALUE,
-        TURBOPACK_REQUIRE_REAL, TURBOPACK_REQUIRE_STUB,
+        TURBOPACK_EXPORT_NAMESPACE, TURBOPACK_EXPORT_VALUE, TURBOPACK_REQUIRE_REAL,
+        TURBOPACK_REQUIRE_STUB, TURBOPACK_RUNTIME_FUNCTION_SHORTCUTS,
     },
     tree_shake::{find_turbopack_part_id_in_asserts, part_of_module, split},
     utils::{AstPathRange, module_value_to_well_known_object},
@@ -1530,7 +1530,7 @@ async fn compile_time_info_for_module_type(
         .entry(vec![DefineableNameSegment::Name(global)])
         .or_insert(FreeVarReference::Ident("globalThis".into()));
 
-    free_var_references.extend(TUBROPACK_RUNTIME_FUNCTION_SHORTCUTS.into_iter().map(
+    free_var_references.extend(TURBOPACK_RUNTIME_FUNCTION_SHORTCUTS.into_iter().map(
         |(name, shortcut)| {
             (
                 vec![DefineableNameSegment::Name(name.into())],

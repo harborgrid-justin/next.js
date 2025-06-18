@@ -348,7 +348,7 @@ impl ClientReferencesGraph {
                 },
                 |parent_info, node, state_map| {
                     let Some((parent_node, _)) = parent_info else {
-                        return;
+                        return Ok(());
                     };
                     let parent_module = parent_node.module;
 
@@ -378,6 +378,7 @@ impl ClientReferencesGraph {
                         }
                         _ => {}
                     };
+                    Ok(())
                 },
             )?;
 

@@ -667,6 +667,7 @@ async fn externals_tracing_module_context(ty: ExternalType) -> Result<Vc<ModuleA
             ExternalType::CommonJs => vec!["require".into()],
             ExternalType::EcmaScriptModule => vec!["import".into()],
             ExternalType::Url => vec![],
+            ExternalType::Global => vec![],
         },
         ..Default::default()
     };
@@ -701,9 +702,8 @@ impl AssetContext for ModuleAssetContext {
         *self.compile_time_info
     }
 
-    #[turbo_tasks::function]
-    fn layer(&self) -> Vc<RcStr> {
-        Vc::cell(self.layer.clone())
+    fn layer(&self) -> RcStr {
+        self.layer.clone()
     }
 
     #[turbo_tasks::function]
@@ -1013,6 +1013,7 @@ pub async fn replace_external(
                 CachedExternalType::EcmaScriptViaRequire
             }
         }
+        ExternalType::Global => CachedExternalType::Global,
         ExternalType::Url => {
             // we don't want to wrap url externals.
             return Ok(None);

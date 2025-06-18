@@ -10,7 +10,7 @@ use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use tracing::Instrument;
-use turbo_rcstr::RcStr;
+use turbo_rcstr::{RcStr, rcstr};
 use turbo_tasks::{
     NonLocalValue, ResolvedVc, TaskInput, ValueToString, Vc, debug::ValueDebugFormat,
     trace::TraceRawVcs,
@@ -448,13 +448,20 @@ impl Pattern {
         current
     }
 
+    /// Normalizes paths by
+    /// - processing path segments: `.` and `..`
+    /// - normalizing windows filepaths by replacing `\` with `/`
+    ///
+    /// The Pattern must have already been processed by [Self::normalize].
+    /// Returns [Option::None] if any of the patterns attempt to navigate out of the root.
     pub fn with_normalized_path(&self) -> Option<Pattern> {
         let mut new = self.clone();
 
         fn normalize_path_internal(pattern: &mut Pattern) -> Option<()> {
             match pattern {
                 Pattern::Constant(c) => {
-                    *c = (*(normalize_path(c)?)).into();
+                    let normalized = c.replace('\\', "/");
+                    *c = (*(normalize_path(normalized.as_str())?)).into();
                     Some(())
                 }
                 Pattern::Dynamic => Some(()),
@@ -490,7 +497,7 @@ impl Pattern {
                             }
                         }
                     }
-                    let separator: RcStr = "/".into();
+                    let separator = rcstr!("/");
                     *list = segments
                         .into_iter()
                         .flat_map(|c| {
@@ -525,17 +532,9 @@ impl Pattern {
     /// Order into Alternatives -> Concatenation -> Constant/Dynamic
     /// Merge when possible
     pub fn normalize(&mut self) {
-        let mut alternatives = [Vec::new()];
         match self {
-            Pattern::Constant(c) => {
-                for alt in alternatives.iter_mut() {
-                    alt.push(Pattern::Constant(c.clone()));
-                }
-            }
-            Pattern::Dynamic => {
-                for alt in alternatives.iter_mut() {
-                    alt.push(Pattern::Dynamic);
-                }
+            Pattern::Dynamic | Pattern::Constant(_) => {
+                // already normalized
             }
             Pattern::Alternatives(list) => {
                 for alt in list.iter_mut() {
@@ -623,6 +622,7 @@ impl Pattern {
                             })
                             .collect(),
                     );
+                    // The recursive call will deduplicate the alternatives after simplifying them
                     self.normalize();
                 } else {
                     let mut new_parts = Vec::new();
@@ -1091,7 +1091,7 @@ impl Pattern {
 
     pub fn or_any_nested_file(&self) -> Self {
         let mut new = self.clone();
-        new.push(Pattern::Constant("/".into()));
+        new.push(Pattern::Constant(rcstr!("/")));
         new.push(Pattern::Dynamic);
         new.normalize();
         Pattern::alternatives([self.clone(), new])
@@ -1548,10 +1548,10 @@ pub async fn read_matches(
             }
             if prefix.is_empty() {
                 if let Some(pos) = pat.match_position("./") {
-                    results.push((pos, PatternMatch::Directory("./".into(), lookup_dir)));
+                    results.push((pos, PatternMatch::Directory(rcstr!("./"), lookup_dir)));
                 }
                 if let Some(pos) = pat.could_match_position("./") {
-                    nested.push((pos, read_matches(*lookup_dir, "./".into(), false, pattern)));
+                    nested.push((pos, read_matches(*lookup_dir, rcstr!("./"), false, pattern)));
                 }
             } else {
                 prefix.push('/');
