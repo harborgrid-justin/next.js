@@ -1128,7 +1128,8 @@ impl EcmascriptModuleContent {
         let (merged_ast, comments, source_maps, original_source_maps) =
             merge_modules(contents, &entry_points, &globals_merged).await?;
 
-        // Use the options from an arbitrary module, since they should all be the same.
+        // Use the options from an arbitrary module, since they should all be the same with regards
+        // to minify_type and chunking_context.
         let options = module_options.last().unwrap().await?;
 
         let modules_header_width = modules.len().next_power_of_two().trailing_zeros();
@@ -1144,7 +1145,6 @@ impl EcmascriptModuleContent {
             },
             export_contexts: None,
             is_esm: true,
-            generate_source_map: options.generate_source_map,
             original_source_map: CodeGenResultOriginalSourceMap::ScopeHoisting(
                 original_source_maps,
             ),
@@ -1546,7 +1546,6 @@ struct CodeGenResult {
     /// `eval_context.imports.exports`
     export_contexts: Option<FxHashMap<RcStr, Id>>,
     is_esm: bool,
-    generate_source_map: bool,
     original_source_map: CodeGenResultOriginalSourceMap,
     minify: MinifyType,
     scope_hoisting_syntax_contexts:
@@ -1715,8 +1714,12 @@ async fn process_parse_result(
 
             Ok(CodeGenResult {
                 program,
-                source_map: CodeGenResultSourceMap::Single {
-                    source_map: source_map.clone(),
+                source_map: if generate_source_map {
+                    CodeGenResultSourceMap::Single {
+                        source_map: source_map.clone(),
+                    }
+                } else {
+                    CodeGenResultSourceMap::None
                 },
                 comments: CodeGenResultComments::Single {
                     comments,
@@ -1725,7 +1728,6 @@ async fn process_parse_result(
                 // TODO ideally don't clone here at all
                 export_contexts: Some(export_contexts.into_owned()),
                 is_esm,
-                generate_source_map,
                 original_source_map: CodeGenResultOriginalSourceMap::Single(original_source_map),
                 minify,
                 scope_hoisting_syntax_contexts: retain_syntax_context.map(|(_, ctxts, _)| ctxts),
@@ -1756,11 +1758,10 @@ async fn process_parse_result(
                             body,
                             shebang: None,
                         }),
-                        source_map: CodeGenResultSourceMap::default(),
+                        source_map: CodeGenResultSourceMap::None,
                         comments: CodeGenResultComments::Empty,
                         export_contexts: None,
                         is_esm: false,
-                        generate_source_map: false,
                         original_source_map: CodeGenResultOriginalSourceMap::Single(None),
                         minify: MinifyType::NoMinify,
                         scope_hoisting_syntax_contexts: None,
@@ -1783,11 +1784,10 @@ async fn process_parse_result(
                             body,
                             shebang: None,
                         }),
-                        source_map: CodeGenResultSourceMap::default(),
+                        source_map: CodeGenResultSourceMap::None,
                         comments: CodeGenResultComments::Empty,
                         export_contexts: None,
                         is_esm: false,
-                        generate_source_map: false,
                         original_source_map: CodeGenResultOriginalSourceMap::Single(None),
                         minify: MinifyType::NoMinify,
                         scope_hoisting_syntax_contexts: None,
@@ -1877,12 +1877,13 @@ async fn emit_content(
         source_map,
         comments,
         is_esm,
-        generate_source_map,
         original_source_map,
         minify,
         export_contexts: _,
         scope_hoisting_syntax_contexts: _,
     } = content;
+
+    let generate_source_map = source_map.is_some();
 
     let mut bytes: Vec<u8> = vec![];
     // TODO: Insert this as a sourceless segment so that sourcemaps aren't affected.
@@ -2051,7 +2052,11 @@ fn hygiene_rename_only(
     )
 }
 
+#[derive(Default)]
 enum CodeGenResultSourceMap {
+    #[default]
+    /// No source map should be generated for this module
+    None,
     Single {
         source_map: Arc<SourceMap>,
     },
@@ -2063,9 +2068,20 @@ enum CodeGenResultSourceMap {
     },
 }
 
+impl CodeGenResultSourceMap {
+    fn is_some(&self) -> bool {
+        match self {
+            CodeGenResultSourceMap::None => false,
+            CodeGenResultSourceMap::Single { .. }
+            | CodeGenResultSourceMap::ScopeHoisting { .. } => true,
+        }
+    }
+}
+
 impl Debug for CodeGenResultSourceMap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            CodeGenResultSourceMap::None => write!(f, "CodeGenResultSourceMap::None"),
             CodeGenResultSourceMap::Single { source_map } => {
                 write!(
                     f,
@@ -2085,20 +2101,13 @@ impl Debug for CodeGenResultSourceMap {
     }
 }
 
-impl Default for CodeGenResultSourceMap {
-    fn default() -> Self {
-        CodeGenResultSourceMap::Single {
-            source_map: Arc::new(SourceMap::default()),
-        }
-    }
-}
-
 impl Files for CodeGenResultSourceMap {
     fn try_lookup_source_file(
         &self,
         pos: BytePos,
     ) -> Result<Option<Arc<SourceFile>>, SourceMapLookupError> {
         match self {
+            CodeGenResultSourceMap::None => Ok(None),
             CodeGenResultSourceMap::Single { source_map } => source_map.try_lookup_source_file(pos),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2113,6 +2122,7 @@ impl Files for CodeGenResultSourceMap {
 
     fn is_in_file(&self, f: &Arc<SourceFile>, raw_pos: BytePos) -> bool {
         match self {
+            CodeGenResultSourceMap::None => false,
             CodeGenResultSourceMap::Single { .. } => f.start_pos <= raw_pos && raw_pos < f.end_pos,
             CodeGenResultSourceMap::ScopeHoisting { .. } => {
                 // let (module, pos) = CodeGenResultComments::decode_bytepos(*modules_header_width,
@@ -2127,6 +2137,7 @@ impl Files for CodeGenResultSourceMap {
 
     fn map_raw_pos(&self, pos: BytePos) -> BytePos {
         match self {
+            CodeGenResultSourceMap::None => BytePos::DUMMY,
             CodeGenResultSourceMap::Single { .. } => pos,
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2139,6 +2150,9 @@ impl Files for CodeGenResultSourceMap {
 impl SourceMapper for CodeGenResultSourceMap {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc {
         match self {
+            CodeGenResultSourceMap::None => {
+                panic!("CodeGenResultSourceMap::None cannot lookup_char_pos")
+            }
             CodeGenResultSourceMap::Single { source_map } => source_map.lookup_char_pos(pos),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2152,6 +2166,9 @@ impl SourceMapper for CodeGenResultSourceMap {
     }
     fn span_to_lines(&self, sp: Span) -> FileLinesResult {
         match self {
+            CodeGenResultSourceMap::None => {
+                panic!("CodeGenResultSourceMap::None cannot span_to_lines")
+            }
             CodeGenResultSourceMap::Single { source_map } => source_map.span_to_lines(sp),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2168,6 +2185,9 @@ impl SourceMapper for CodeGenResultSourceMap {
     }
     fn span_to_string(&self, sp: Span) -> String {
         match self {
+            CodeGenResultSourceMap::None => {
+                panic!("CodeGenResultSourceMap::None cannot span_to_string")
+            }
             CodeGenResultSourceMap::Single { source_map } => source_map.span_to_string(sp),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2184,6 +2204,9 @@ impl SourceMapper for CodeGenResultSourceMap {
     }
     fn span_to_filename(&self, sp: Span) -> Arc<FileName> {
         match self {
+            CodeGenResultSourceMap::None => {
+                panic!("CodeGenResultSourceMap::None cannot span_to_filename")
+            }
             CodeGenResultSourceMap::Single { source_map } => source_map.span_to_filename(sp),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2200,6 +2223,9 @@ impl SourceMapper for CodeGenResultSourceMap {
     }
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
         match self {
+            CodeGenResultSourceMap::None => {
+                panic!("CodeGenResultSourceMap::None cannot merge_spans")
+            }
             CodeGenResultSourceMap::Single { source_map } => source_map.merge_spans(sp_lhs, sp_rhs),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2229,6 +2255,9 @@ impl SourceMapper for CodeGenResultSourceMap {
     }
     fn call_span_if_macro(&self, sp: Span) -> Span {
         match self {
+            CodeGenResultSourceMap::None => {
+                panic!("CodeGenResultSourceMap::None cannot call_span_if_macro")
+            }
             CodeGenResultSourceMap::Single { source_map } => source_map.call_span_if_macro(sp),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
@@ -2248,6 +2277,9 @@ impl SourceMapper for CodeGenResultSourceMap {
     }
     fn span_to_snippet(&self, sp: Span) -> Result<String, Box<SpanSnippetError>> {
         match self {
+            CodeGenResultSourceMap::None => {
+                panic!("CodeGenResultSourceMap::None cannot span_to_snippet")
+            }
             CodeGenResultSourceMap::Single { source_map } => source_map.span_to_snippet(sp),
             CodeGenResultSourceMap::ScopeHoisting {
                 modules_header_width,
