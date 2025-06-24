@@ -8,6 +8,7 @@ import LightIcon from '../../../icons/light-icon'
 import DarkIcon from '../../../icons/dark-icon'
 import SystemIcon from '../../../icons/system-icon'
 import EyeIcon from '../../../icons/eye-icon'
+import { useRestartServer } from '../../errors/error-overlay-toolbar/use-restart-server'
 
 function ThemeIcon({ theme }: { theme: 'dark' | 'light' | 'system' }) {
   switch (theme) {
@@ -34,6 +35,7 @@ export function SettingsTab({
   handleScaleChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
 }) {
   const [theme, setTheme] = useTheme()
+  const { restartServerAction, isPending } = useRestartServer()
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const portal = document.querySelector('nextjs-portal')
@@ -57,21 +59,6 @@ export function SettingsTab({
       portal.classList.add('light')
       localStorage.setItem(STORAGE_KEY_THEME, 'light')
     }
-  }
-
-  function handleRestartDevServer(invalidatePersistentCache: boolean) {
-    let endpoint = '/__nextjs_restart_dev'
-
-    if (invalidatePersistentCache) {
-      endpoint = '/__nextjs_restart_dev?invalidatePersistentCache'
-    }
-
-    fetch(endpoint, {
-      method: 'POST',
-    }).then(() => {
-      // TODO: poll server status and reload when the server is back up.
-      // https://github.com/vercel/next.js/pull/80005
-    })
   }
 
   function hide() {
@@ -192,11 +179,12 @@ export function SettingsTab({
             name="restart-dev-server"
             data-restart-dev-server
             data-nextjs-devtools-panel-settings-section-action-button
+            disabled={isPending}
             onClick={() =>
-              handleRestartDevServer(/*invalidatePersistentCache*/ false)
+              restartServerAction({ invalidatePersistentCache: false })
             }
           >
-            <span>Restart</span>
+            <span>{isPending ? 'Restarting...' : 'Restart'}</span>
           </button>
         </div>
       </div>
@@ -217,11 +205,12 @@ export function SettingsTab({
               name="reset-bundler-cache"
               data-reset-bundler-cache
               data-nextjs-devtools-panel-settings-section-action-button
+              disabled={isPending}
               onClick={() =>
-                handleRestartDevServer(/*invalidatePersistentCache*/ true)
+                restartServerAction({ invalidatePersistentCache: true })
               }
             >
-              <span>Reset Cache</span>
+              <span>{isPending ? 'Resetting...' : 'Reset Cache'}</span>
             </button>
           </div>
         </div>
@@ -304,9 +293,12 @@ export const DEVTOOLS_PANEL_TAB_SETTINGS_STYLES = css`
     }
   }
 
-  :global(.icon) {
-    width: 18px;
-    height: 18px;
-    color: #666;
+  [data-nextjs-devtools-panel-settings-section-action-button]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+
+    &:hover {
+      background: var(--color-background-100);
+    }
   }
 `

@@ -11,9 +11,7 @@ import { useRestartServer } from './use-restart-server'
  */
 export function RestartServerButton({ error }: { error: Error }) {
   const [showButton, setShowButton] = useState(false)
-  const { restartServerAction, isPending } = useRestartServer({
-    invalidatePersistentCache: true,
-  })
+  const { restartServerAction, isPending } = useRestartServer()
 
   useEffect(() => {
     const ERROR_KEY = `__next_error_overlay:${window.location.pathname}:${error.message}`
@@ -35,7 +33,7 @@ export function RestartServerButton({ error }: { error: Error }) {
   }
 
   function handleClick() {
-    restartServerAction()
+    restartServerAction({ invalidatePersistentCache: true })
   }
 
   return (
