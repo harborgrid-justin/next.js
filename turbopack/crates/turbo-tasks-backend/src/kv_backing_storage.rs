@@ -987,7 +987,7 @@ fn get_string_id<'a>(batch: &impl BaseWriteBatch<'a>, s: &RcStr) -> Result<(u32,
 
             Ok(AtomicU32::new(latest_id))
         })?
-        .fetch_add(1, Ordering::SeqCst);
+        .fetch_add(1, Ordering::Relaxed);
 
     Ok((global_id, true))
 }
