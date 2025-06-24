@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { RefreshClockWise } from '../../../icons/refresh-clock-wise'
+import { useRestartServer } from './use-restart-server'
 
 /**
  * When the Turbopack persistent cache is enabled, and the user reloads on a
@@ -10,6 +11,9 @@ import { RefreshClockWise } from '../../../icons/refresh-clock-wise'
  */
 export function RestartServerButton({ error }: { error: Error }) {
   const [showButton, setShowButton] = useState(false)
+  const { restartServerAction, isPending } = useRestartServer({
+    invalidatePersistentCache: true,
+  })
 
   useEffect(() => {
     const ERROR_KEY = `__next_error_overlay:${window.location.pathname}:${error.message}`
@@ -31,23 +35,18 @@ export function RestartServerButton({ error }: { error: Error }) {
   }
 
   function handleClick() {
-    // TODO: Use Client Action for transition indicator when DevTools is isolated.
-    fetch('/__nextjs_restart_dev?invalidatePersistentCache', {
-      method: 'POST',
-    }).then(() => {
-      // TODO: poll server status and reload when the server is back up.
-      // https://github.com/vercel/next.js/pull/80005
-    })
+    restartServerAction()
   }
 
   return (
     <button
       className="restart-dev-server-button"
       onClick={handleClick}
+      disabled={isPending}
       title="Clears the bundler cache and restarts the dev server. Helpful if you are seeing stale errors or changes are not appearing."
     >
       <RefreshClockWise width={14} height={14} />
-      Clear Bundler Cache &amp; Restart
+      {isPending ? 'Restarting...' : 'Clear Bundler Cache & Restart'}
     </button>
   )
 }
@@ -72,5 +71,10 @@ export const RESTART_SERVER_BUTTON_STYLES = `
     font-size: var(--size-12);
     font-weight: 500;
     line-height: var(--size-16);
+  }
+
+  .restart-dev-server-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `
