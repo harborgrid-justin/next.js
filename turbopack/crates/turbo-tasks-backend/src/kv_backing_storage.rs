@@ -1,6 +1,7 @@
 use std::{
     borrow::Borrow,
     cmp::max,
+    collections::HashMap,
     env,
     path::PathBuf,
     sync::{
@@ -647,19 +648,41 @@ fn restore_strings<D: KeyValueDatabase>(
     let mut map = Vec::with_capacity(global_ids.len());
 
     for global_id in global_ids.iter() {
-        let Some(value) = database.get(
-            tx,
-            KeySpace::ReverseStringInternMap,
-            IntKey::new(global_id).as_ref(),
-        )?
-        else {
-            bail!("Unable to find string for {global_id}")
+        // First, check the in-memory cache
+        let rcstr = {
+            let cache = STRING_CACHE.lock().unwrap_or_else(PoisonError::into_inner);
+            cache.get(&global_id).cloned()
         };
 
-        map.push(unsafe {
-            // Safety: We interned a rust string, so it is valid utf-8
-            RcStr::from(str::from_utf8_unchecked(value.borrow()))
-        });
+        let rcstr = if let Some(rcstr) = rcstr {
+            // Cache hit
+            rcstr
+        } else {
+            // Cache miss, fetch from database
+            let Some(value) = database.get(
+                tx,
+                KeySpace::ReverseStringInternMap,
+                IntKey::new(global_id).as_ref(),
+            )?
+            else {
+                bail!("Unable to find string for {global_id}")
+            };
+
+            let rcstr = unsafe {
+                // Safety: We interned a rust string, so it is valid utf-8
+                RcStr::from(str::from_utf8_unchecked(value.borrow()))
+            };
+
+            // Update the cache
+            {
+                let mut cache = STRING_CACHE.lock().unwrap_or_else(PoisonError::into_inner);
+                cache.insert(global_id, rcstr.clone());
+            }
+
+            rcstr
+        };
+
+        map.push(rcstr);
     }
 
     Ok(map.into())
@@ -963,6 +986,8 @@ fn save_strings_concurrent<'a>(
 }
 
 static STRING_INTERN_ID: OnceLock<AtomicU32> = OnceLock::new();
+static STRING_CACHE: LazyLock<Mutex<HashMap<u32, RcStr>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// Returns `(global_id, is_new)`
 fn get_string_id<'a>(batch: &impl BaseWriteBatch<'a>, s: &RcStr) -> Result<(u32, bool)> {
