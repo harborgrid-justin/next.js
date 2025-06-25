@@ -22,7 +22,6 @@ export function restoreUndefined(x: any): any {
   }
   return x
 }
-
 const levels: Array<LogLevel> = ['log', 'info', 'warn', 'debug', 'table']
 const forwardConsole: typeof console = {
   ...console,
@@ -33,7 +32,7 @@ const forwardConsole: typeof console = {
         (console[method] as any)(
           ...args.map((arg) =>
             typeof arg === 'object' && arg !== null
-              ? util.inspect(arg, { depth: null, colors: true })
+              ? util.inspect(arg, { depth: Infinity, colors: true })
               : arg
           )
         ),
@@ -463,6 +462,8 @@ export async function receiveEvent(
           const loggableEntry = await enhanceErrors(entry, ctx, distDir)
           const consoleMethod =
             forwardConsole[entry.level] || forwardConsole.log
+          console.log('we are logging this data', JSON.stringify(loggableEntry))
+
           consoleMethod(browserPrefix, ...loggableEntry)
           break
         }

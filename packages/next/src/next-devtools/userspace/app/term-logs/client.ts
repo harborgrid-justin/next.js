@@ -16,7 +16,7 @@ const replacer = (_key: string, value: unknown) => {
   return value === undefined ? UNDEFINED_MARKER : value
 }
 
-const stringify = configure({ maximumDepth: 5 }) // todo: allow user to config
+const stringify = configure({ maximumDepth: Number.MAX_SAFE_INTEGER }) // todo: allow user to config
 // ternary since stringify(undefined) wont be handled by the replacer
 const logStringify = (data: unknown) =>
   data === undefined ? UNDEFINED_MARKER : stringify(data, replacer)

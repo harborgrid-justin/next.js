@@ -1,5 +1,4 @@
-// Type definitions inlined as per d.ts
-
+// adopted from https://github.com/BridgeAR/safe-stable-stringify
 type Replacer =
   | ((key: string, value: unknown) => string | number | boolean | null | object)
   | (number | string)[]
@@ -795,4 +794,3 @@ export function configure(options: StringifyOptions = {}) {
 
   return stringify as typeof stringify
 }
-
