@@ -84,9 +84,7 @@ fn bench_small_apps(c: &mut Criterion) {
                             no_minify: false,
                             force_memory_cleanup: true,
                         })
-                        .await?;
-
-                        anyhow::Ok(())
+                        .await
                     })
                     .unwrap();
                 });
