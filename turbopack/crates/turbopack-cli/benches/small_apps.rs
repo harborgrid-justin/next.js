@@ -69,7 +69,6 @@ fn bench_small_apps(c: &mut Criterion) {
                     let app_name = app.file_name().unwrap().to_string_lossy().to_string();
 
                     rt.block_on(async move {
-                        let start_allocations = TurboMalloc::allocation_counters();
                         turbopack_cli::build::build(&BuildArguments {
                             common: CommonArguments {
                                 entries: Some(vec![format!("{app_name}/index.tsx")]),
@@ -86,9 +85,6 @@ fn bench_small_apps(c: &mut Criterion) {
                             force_memory_cleanup: true,
                         })
                         .await?;
-
-                        let alloc_info = start_allocations.until_now();
-                        println!("alloc_info: {alloc_info:?}");
 
                         anyhow::Ok(())
                     })
