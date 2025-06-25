@@ -1,7 +1,6 @@
 use std::{
     borrow::Borrow,
     cmp::max,
-    collections::HashMap,
     env,
     path::PathBuf,
     sync::{
@@ -12,12 +11,13 @@ use std::{
 
 use anyhow::{Context, Result, anyhow, bail};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 use tracing::Span;
 use turbo_rcstr::RcStr;
 use turbo_tasks::{
-    SessionId, TaskId,
+    FxDashMap, SessionId, TaskId,
     backend::CachedTaskType,
     panic_hooks::{PanicHookGuard, register_panic_hook},
     turbo_tasks_scope,
@@ -673,11 +673,12 @@ fn restore_strings<D: KeyValueDatabase>(
                 RcStr::from(str::from_utf8_unchecked(value.borrow()))
             };
 
-            // Update the cache
+            // Update both caches
             {
                 let mut cache = STRING_CACHE.lock().unwrap_or_else(PoisonError::into_inner);
                 cache.insert(global_id, rcstr.clone());
             }
+            STRING_TO_ID_CACHE.insert(rcstr.clone(), global_id);
 
             rcstr
         };
@@ -986,18 +987,28 @@ fn save_strings_concurrent<'a>(
 }
 
 static STRING_INTERN_ID: OnceLock<AtomicU32> = OnceLock::new();
-static STRING_CACHE: LazyLock<Mutex<HashMap<u32, RcStr>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+static STRING_CACHE: LazyLock<Mutex<FxHashMap<u32, RcStr>>> =
+    LazyLock::new(|| Mutex::new(FxHashMap::default()));
+static STRING_TO_ID_CACHE: LazyLock<FxDashMap<RcStr, u32>> = LazyLock::new(FxDashMap::default);
 
 /// Returns `(global_id, is_new)`
 fn get_string_id<'a>(batch: &impl BaseWriteBatch<'a>, s: &RcStr) -> Result<(u32, bool)> {
+    // First check the synchronization cache
+    if let Some(global_id) = STRING_TO_ID_CACHE.get(s) {
+        return Ok((*global_id, false));
+    }
+
+    // Check the database
     let original = batch.get(KeySpace::StringInternMap, s.as_bytes())?;
 
     if let Some(bytes) = original {
         let global_id = as_u32(bytes)?;
+        // Cache the result for future lookups
+        STRING_TO_ID_CACHE.insert(s.clone(), global_id);
         return Ok((global_id, false));
     }
 
+    // Allocate a new ID
     let global_id = STRING_INTERN_ID
         .get_or_try_init(|| {
             let Some(bytes) = batch.get(
@@ -1013,6 +1024,9 @@ fn get_string_id<'a>(batch: &impl BaseWriteBatch<'a>, s: &RcStr) -> Result<(u32,
             Ok(AtomicU32::new(latest_id))
         })?
         .fetch_add(1, Ordering::Relaxed);
+
+    // Cache the new assignment to prevent duplicates within the same batch
+    STRING_TO_ID_CACHE.insert(s.clone(), global_id);
 
     Ok((global_id, true))
 }
