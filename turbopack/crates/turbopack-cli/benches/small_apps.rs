@@ -107,7 +107,7 @@ fn bench_small_apps(c: &mut Criterion) {
                     writeln!(writer, "## Allocations").unwrap();
 
                     for allocation in allocations {
-                        writeln!(writer, "## {allocation:?}").unwrap();
+                        writeln!(writer, "- {allocation:?}").unwrap();
                     }
                 }
             },
