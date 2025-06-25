@@ -74,6 +74,7 @@ export async function turbopackBuild(): Promise<{
         hasRewrites,
         // Implemented separately in Turbopack, doesn't have to be passed here.
         middlewareMatchers: undefined,
+        rewrites,
       }),
       buildId,
       encryptionKey,

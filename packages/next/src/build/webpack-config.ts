@@ -1982,6 +1982,7 @@ export default async function getBaseWebpackConfig(
           isNodeServer,
           middlewareMatchers,
           omitNonDeterministic: isCompileMode,
+          rewrites,
         })
       ),
       isClient &&
