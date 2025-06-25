@@ -58,12 +58,6 @@ export function DevOverlay({
       <ComponentStyles />
       <DarkTheme />
 
-<<<<<<< HEAD
-{/* wait are different devtools rendered per router jfc */}
-||||||| parent of 0fba699909 (checkpoint)
-=======
-      {/* wait are different devtools rendered per router jfc */}
->>>>>>> 0fba699909 (checkpoint)
       <RenderError state={state} isAppDir={true}>
         {({ runtimeErrors, totalErrorCount }) => {
           return (
