@@ -4,6 +4,7 @@
 static ALLOC: turbo_tasks_malloc::TurboMalloc = turbo_tasks_malloc::TurboMalloc;
 
 use std::{
+    io::Write,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -56,18 +57,19 @@ fn bench_small_apps(c: &mut Criterion) {
                 let apps_dir = apps_dir.clone();
                 let app = app.clone();
 
+                let app_name = app.file_name().unwrap().to_string_lossy().to_string();
+
                 let mut allocations = vec![];
                 b.iter(|| {
+                    let apps_dir = apps_dir.clone();
+                    let app = app.clone();
+                    let app_name = app_name.clone();
+
                     let mut rt = tokio::runtime::Builder::new_multi_thread();
                     rt.enable_all().on_thread_stop(|| {
                         TurboMalloc::thread_stop();
                     });
                     let rt = rt.build().unwrap();
-
-                    let apps_dir = apps_dir.clone();
-                    let app = app.clone();
-
-                    let app_name = app.file_name().unwrap().to_string_lossy().to_string();
 
                     let allocation_counters = TurboMalloc::allocation_counters();
 
@@ -97,7 +99,17 @@ fn bench_small_apps(c: &mut Criterion) {
                     allocations.push(alloc_info);
                 });
 
-                println!("Allocations: {allocations:?}");
+                if let Ok(output_file_path) = std::env::var("GITHUB_STEP_SUMMARY") {
+                    let mut file = std::fs::File::create(output_file_path).unwrap();
+                    let mut writer = std::io::BufWriter::new(file);
+
+                    writeln!(writer, "# App: {app_name}").unwrap();
+                    writeln!(writer, "## Allocations").unwrap();
+
+                    for allocation in allocations {
+                        writeln!(writer, "## {allocation:?}").unwrap();
+                    }
+                }
             },
         );
     }
