@@ -56,7 +56,8 @@ fn bench_small_apps(c: &mut Criterion) {
                 let apps_dir = apps_dir.clone();
                 let app = app.clone();
 
-                b.iter(move || {
+                let mut allocations = vec![];
+                b.iter(|| {
                     let mut rt = tokio::runtime::Builder::new_multi_thread();
                     rt.enable_all().on_thread_stop(|| {
                         TurboMalloc::thread_stop();
@@ -67,6 +68,8 @@ fn bench_small_apps(c: &mut Criterion) {
                     let app = app.clone();
 
                     let app_name = app.file_name().unwrap().to_string_lossy().to_string();
+
+                    let allocation_counters = TurboMalloc::allocation_counters();
 
                     rt.block_on(async move {
                         turbopack_cli::build::build(&BuildArguments {
@@ -84,10 +87,17 @@ fn bench_small_apps(c: &mut Criterion) {
                             no_minify: false,
                             force_memory_cleanup: true,
                         })
-                        .await
+                        .await?;
+
+                        anyhow::Ok(())
                     })
                     .unwrap();
+
+                    let alloc_info = allocation_counters.until_now();
+                    allocations.push(alloc_info);
                 });
+
+                println!("Allocations: {allocations:?}");
             },
         );
     }
