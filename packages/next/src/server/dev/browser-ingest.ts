@@ -23,8 +23,23 @@ export function restoreUndefined(x: any): any {
   return x
 }
 
-// to not get confused if something is a debug log or forwarded log
-const forwardConsole = console
+const levels: Array<LogLevel> = ['log', 'info', 'warn', 'debug', 'table']
+const forwardConsole: typeof console = {
+  ...console,
+  ...Object.fromEntries(
+    levels.map((method) => [
+      method,
+      (...args: any[]) =>
+        (console[method] as any)(
+          ...args.map((arg) =>
+            typeof arg === 'object' && arg !== null
+              ? util.inspect(arg, { depth: null, colors: true })
+              : arg
+          )
+        ),
+    ])
+  ),
+}
 
 // const levelColors = {
 //   log: white,
