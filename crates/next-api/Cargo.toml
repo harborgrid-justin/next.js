@@ -41,7 +41,7 @@ turbopack-nodejs = { workspace = true }
 turbopack-wasm = { workspace = true }
 
 [dev-dependencies]
-turbo-tasks-malloc = { workspace = true }
+turbo-tasks-malloc = { workspace = true, features = ["custom_allocator"] }
 divan = { workspace = true }
 tokio = { workspace = true }
 tempfile = { workspace = true }
