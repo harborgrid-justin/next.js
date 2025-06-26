@@ -235,12 +235,9 @@ async fn wrap_edge_page(
             "VAR_MODULE_GLOBAL_ERROR" => INNER_ERROR.into(),
         },
         fxindexmap! {
-            "pagesType" => StringifyJs("pages").to_string().into(),
-            "sriEnabled" => serde_json::Value::Bool(sri_enabled).to_string().into(),
             // TODO do we really need to pass the entire next config here?
             // This is bad for invalidation as any config change will invalidate this
             "nextConfig" => serde_json::to_string(next_config_val)?.into(),
-            "dev" => serde_json::Value::Bool(dev).to_string().into(),
             "pageRouteModuleOptions" => serde_json::to_string(&get_route_module_options(page.clone(), pathname.clone()))?.into(),
             "errorRouteModuleOptions" => serde_json::to_string(&get_route_module_options(rcstr!("/_error"), rcstr!("/_error")))?.into(),
             "user500RouteModuleOptions" => serde_json::to_string(&get_route_module_options(rcstr!("/500"), rcstr!("/500")))?.into(),
