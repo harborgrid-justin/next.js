@@ -171,7 +171,7 @@ function ServerRoot({
     <AppRouter
       gracefullyDegrade={isBot(window.navigator.userAgent)}
       actionQueue={actionQueue}
-      globalErrorComponentAndStyles={initialRSCPayload.G}
+      globalErrorState={initialRSCPayload.G}
       assetPrefix={initialRSCPayload.p}
     />
   )

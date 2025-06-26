@@ -28,7 +28,7 @@ pub enum ProcessResult {
 #[turbo_tasks::value_impl]
 impl ProcessResult {
     #[turbo_tasks::function]
-    pub async fn module(&self) -> Result<Vc<Box<dyn Module>>> {
+    pub fn module(&self) -> Result<Vc<Box<dyn Module>>> {
         match *self {
             ProcessResult::Module(m) => Ok(*m),
             ProcessResult::Ignore => {

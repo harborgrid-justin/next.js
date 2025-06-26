@@ -98,6 +98,7 @@ import { getDevOverlayFontMiddleware } from '../../next-devtools/server/font/get
 import { devIndicatorServerState } from './dev-indicator-server-state'
 import { getDisableDevIndicatorMiddleware } from '../../next-devtools/server/dev-indicator-middleware'
 import { getRestartDevServerMiddleware } from '../../next-devtools/server/restart-dev-server-middleware'
+import { backgroundLogCompilationEvents } from '../../shared/lib/turbopack/compilation-events'
 // import { getSupportedBrowsers } from '../../build/utils'
 
 const wsServer = new ws.Server({ noServer: true })
@@ -248,6 +249,9 @@ export async function createHotReloaderTurbopack(
       memoryLimit: opts.nextConfig.experimental?.turbopackMemoryLimit,
     }
   )
+  backgroundLogCompilationEvents(project, {
+    eventTypes: ['StartupCacheInvalidationEvent'],
+  })
   setBundlerFindSourceMapImplementation(
     getSourceMapFromTurbopack.bind(null, project, projectPath)
   )

@@ -181,53 +181,66 @@ describe('searchparams-reuse-loading', () => {
         let interceptRequests = false
         const browser = await next.browser(path, {
           beforePageLoad(page) {
-            page.route('**/search-params*', async (route) => {
-              if (!interceptRequests) {
-                return route.continue()
-              }
-
-              const request = route.request()
-              const headers = await request.allHeaders()
-              const url = new URL(request.url())
-              const promiseKey =
-                url.pathname + '?id=' + url.searchParams.get('id')
-
-              if (headers['rsc'] === '1' && !headers['next-router-prefetch']) {
-                // Create a promise that will be resolved by the later test code
-                let resolvePromise: () => void
-                const promise = new Promise<void>((res) => {
-                  resolvePromise = res
-                })
-
-                if (rscRequestPromise.has(promiseKey)) {
-                  throw new Error('Duplicate request')
+            page.route(
+              (url) => {
+                return url.pathname.includes('search-params')
+              },
+              async (route) => {
+                if (!interceptRequests) {
+                  return route.continue()
                 }
 
-                rscRequestPromise.set(promiseKey, {
-                  resolve: async () => {
-                    await route.continue()
-                    // wait a moment to ensure the response is received
-                    await new Promise((res) => setTimeout(res, 500))
-                    resolvePromise()
-                  },
-                })
+                const request = route.request()
+                const headers = await request.allHeaders()
+                const url = new URL(request.url())
+                const promiseKey =
+                  url.pathname + '?id=' + url.searchParams.get('id')
 
-                // Await the promise to effectively stall the request
-                await promise
-              } else {
-                await route.continue()
+                if (
+                  headers['rsc'] === '1' &&
+                  !headers['next-router-prefetch']
+                ) {
+                  // Create a promise that will be resolved by the later test code
+                  let resolvePromise: () => void
+                  const promise = new Promise<void>((res) => {
+                    resolvePromise = res
+                  })
+
+                  if (rscRequestPromise.has(promiseKey)) {
+                    throw new Error('Duplicate request')
+                  }
+
+                  rscRequestPromise.set(promiseKey, {
+                    resolve: async () => {
+                      await route.continue()
+                      // wait a moment to ensure the response is received
+                      await new Promise((res) => setTimeout(res, 500))
+                      resolvePromise()
+                    },
+                  })
+
+                  // Await the promise to effectively stall the request
+                  await promise
+                } else {
+                  await route.continue()
+                }
               }
-            })
+            )
           },
         })
 
         const basePath = path === '/' ? '' : path
+        const searchParamsPagePath = `${basePath}/search-params`
+        const canonicalSearchParamsPagePath =
+          path === '/with-middleware'
+            ? `${searchParamsPagePath}/someValue`
+            : searchParamsPagePath
 
         await browser.waitForIdleNetwork()
         interceptRequests = true
         // The first link we click is "auto" prefetched.
         await browser
-          .elementByCss(`[href="${basePath}/search-params?id=1"]`)
+          .elementByCss(`[href="${searchParamsPagePath}?id=1"]`)
           .click()
 
         // We expect to click it and immediately see a loading state
@@ -235,8 +248,9 @@ describe('searchparams-reuse-loading', () => {
         // We only resolve the dynamic request after we've confirmed loading exists,
         // to avoid a race where the dynamic request handles the loading state instead.
         let dynamicRequest = rscRequestPromise.get(
-          `${basePath}/search-params?id=1`
+          `${canonicalSearchParamsPagePath}?id=1`
         )
+
         expect(dynamicRequest).toBeDefined()
 
         // resolve the promise
@@ -252,10 +266,12 @@ describe('searchparams-reuse-loading', () => {
         // Do the exact same thing again, for another prefetch auto link, to ensure
         // loading works as expected and we get different search params
         await browser
-          .elementByCss(`[href="${basePath}/search-params?id=2"]`)
+          .elementByCss(`[href="${searchParamsPagePath}?id=2"]`)
           .click()
         expect(await browser.elementById('loading').text()).toBe('Loading...')
-        dynamicRequest = rscRequestPromise.get(`${basePath}/search-params?id=2`)
+        dynamicRequest = rscRequestPromise.get(
+          `${canonicalSearchParamsPagePath}?id=2`
+        )
         expect(dynamicRequest).toBeDefined()
 
         // resolve the promise
@@ -269,11 +285,11 @@ describe('searchparams-reuse-loading', () => {
         await browser.elementByCss(`[href='${path}']`).click()
 
         await browser
-          .elementByCss(`[href="${basePath}/search-params?id=3"]`)
+          .elementByCss(`[href="${searchParamsPagePath}?id=3"]`)
           .click()
-        expect(rscRequestPromise.has(`${basePath}/search-params?id=3`)).toBe(
-          false
-        )
+        expect(
+          rscRequestPromise.has(`${canonicalSearchParamsPagePath}?id=3`)
+        ).toBe(false)
         // no need to resolve any dynamic requests, as this is a full prefetch
         const params3 = await browser.waitForElementByCss('#params').text()
         expect(params3).toBe('{"id":"3"}')

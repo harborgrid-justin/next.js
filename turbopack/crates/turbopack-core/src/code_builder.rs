@@ -185,7 +185,7 @@ impl GenerateSourceMap for Code {
     /// far the simplest way to concatenate the source maps of the multiple
     /// chunk items into a single map file.
     #[turbo_tasks::function]
-    pub async fn generate_source_map(&self) -> Result<Vc<OptionStringifiedSourceMap>> {
+    pub fn generate_source_map(&self) -> Result<Vc<OptionStringifiedSourceMap>> {
         Ok(Vc::cell(Some(self.generate_source_map_ref()?)))
     }
 }

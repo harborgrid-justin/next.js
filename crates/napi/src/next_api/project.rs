@@ -35,6 +35,7 @@ use turbo_tasks::{
     message_queue::{CompilationEvent, Severity, TimingEvent},
     trace::TraceRawVcs,
 };
+use turbo_tasks_backend::db_invalidation::invalidation_reasons;
 use turbo_tasks_fs::{
     DiskFileSystem, FileContent, FileSystem, FileSystemPath, get_relative_path_to,
     util::uri_from_file,
@@ -571,9 +572,15 @@ pub async fn project_update(
 pub async fn project_invalidate_persistent_cache(
     #[napi(ts_arg_type = "{ __napiType: \"Project\" }")] project: External<ProjectInstance>,
 ) -> napi::Result<()> {
-    tokio::task::spawn_blocking(move || project.turbo_tasks.invalidate_persistent_cache())
-        .await
-        .context("panicked while invalidating persistent cache")??;
+    tokio::task::spawn_blocking(move || {
+        // TODO: Let the JS caller specify a reason? We need to limit the reasons to ones we know
+        // how to generate a message for on the Rust side of the FFI.
+        project
+            .turbo_tasks
+            .invalidate_persistent_cache(invalidation_reasons::USER_REQUEST)
+    })
+    .await
+    .context("panicked while invalidating persistent cache")??;
     Ok(())
 }
 

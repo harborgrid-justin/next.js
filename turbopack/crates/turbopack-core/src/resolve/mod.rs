@@ -283,10 +283,7 @@ impl ModuleResolveResultBuilder {
 #[turbo_tasks::value_impl]
 impl ModuleResolveResult {
     #[turbo_tasks::function]
-    pub async fn with_affecting_source(
-        &self,
-        source: ResolvedVc<Box<dyn Source>>,
-    ) -> Result<Vc<Self>> {
+    pub fn with_affecting_source(&self, source: ResolvedVc<Box<dyn Source>>) -> Result<Vc<Self>> {
         Ok(Self {
             primary: self.primary.clone(),
             affecting_sources: self
@@ -300,7 +297,7 @@ impl ModuleResolveResult {
     }
 
     #[turbo_tasks::function]
-    pub async fn with_affecting_sources(
+    pub fn with_affecting_sources(
         &self,
         sources: Vec<ResolvedVc<Box<dyn Source>>>,
     ) -> Result<Vc<Self>> {
@@ -899,10 +896,7 @@ impl ResolveResult {
     }
 
     #[turbo_tasks::function]
-    pub async fn with_affecting_source(
-        &self,
-        source: ResolvedVc<Box<dyn Source>>,
-    ) -> Result<Vc<Self>> {
+    pub fn with_affecting_source(&self, source: ResolvedVc<Box<dyn Source>>) -> Result<Vc<Self>> {
         Ok(Self {
             primary: self.primary.clone(),
             affecting_sources: self
@@ -916,7 +910,7 @@ impl ResolveResult {
     }
 
     #[turbo_tasks::function]
-    pub async fn with_affecting_sources(
+    pub fn with_affecting_sources(
         &self,
         sources: Vec<ResolvedVc<Box<dyn Source>>>,
     ) -> Result<Vc<Self>> {

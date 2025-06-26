@@ -111,7 +111,7 @@ async fn get_client_module_options_context(
 ) -> Result<Vc<ModuleOptionsContext>> {
     let is_dev = matches!(*node_env.await?, NodeEnv::Development);
     let module_options_context = ModuleOptionsContext {
-        preset_env_versions: Some(env),
+        environment: Some(env),
         execution_context: Some(execution_context),
         tree_shaking_mode: Some(TreeShakingMode::ReexportsOnly),
         keep_last_successful_parse: is_dev,

@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow};
+use browserslist::Distrib;
 use swc_core::ecma::preset_env::{Version, Versions};
 use turbo_rcstr::{RcStr, rcstr};
 use turbo_tasks::{ResolvedVc, TaskInput, Vc};
@@ -62,6 +63,16 @@ pub enum ExecutionEnvironment {
     Custom(u8),
 }
 
+async fn resolve_browserslist(browser_env: ResolvedVc<BrowserEnvironment>) -> Result<Vec<Distrib>> {
+    Ok(browserslist::resolve(
+        browser_env.await?.browserslist_query.split(','),
+        &browserslist::Opts {
+            ignore_unknown_versions: true,
+            ..Default::default()
+        },
+    )?)
+}
+
 #[turbo_tasks::value_impl]
 impl Environment {
     #[turbo_tasks::function]
@@ -81,12 +92,31 @@ impl Environment {
             ExecutionEnvironment::NodeJsBuildTime(node_env, ..)
             | ExecutionEnvironment::NodeJsLambda(node_env) => node_env.runtime_versions(),
             ExecutionEnvironment::Browser(browser_env) => {
-                Vc::cell(Versions::parse_versions(browserslist::resolve(
-                    browser_env.await?.browserslist_query.split(','),
-                    &browserslist::Opts::default(),
-                )?)?)
+                let distribs = resolve_browserslist(browser_env).await?;
+                Vc::cell(Versions::parse_versions(distribs)?)
             }
-            ExecutionEnvironment::EdgeWorker(_) => todo!(),
+            ExecutionEnvironment::EdgeWorker(edge_env) => edge_env.runtime_versions(),
+            ExecutionEnvironment::Custom(_) => todo!(),
+        })
+    }
+
+    #[turbo_tasks::function]
+    pub async fn browserslist_query(&self) -> Result<Vc<RcStr>> {
+        Ok(match self.execution {
+            ExecutionEnvironment::NodeJsBuildTime(_)
+            | ExecutionEnvironment::NodeJsLambda(_)
+            | ExecutionEnvironment::EdgeWorker(_) =>
+            // TODO: This is a hack, browserslist_query is only used by CSS processing for
+            // LightningCSS However, there is an issue where the CSS is not transitioned
+            // to the client which we still have to solve. It does apply the
+            // browserslist correctly because CSS Modules in client components is double-processed,
+            // once for server once for browser.
+            {
+                Vc::cell("".into())
+            }
+            ExecutionEnvironment::Browser(browser_env) => {
+                Vc::cell(browser_env.await?.browserslist_query.clone())
+            }
             ExecutionEnvironment::Custom(_) => todo!(),
         })
     }
@@ -292,7 +322,28 @@ pub struct BrowserEnvironment {
 }
 
 #[turbo_tasks::value(shared)]
-pub struct EdgeWorkerEnvironment {}
+pub struct EdgeWorkerEnvironment {
+    pub node_version: ResolvedVc<NodeJsVersion>,
+}
+
+#[turbo_tasks::value_impl]
+impl EdgeWorkerEnvironment {
+    #[turbo_tasks::function]
+    pub async fn runtime_versions(&self) -> Result<Vc<RuntimeVersions>> {
+        let str = match *self.node_version.await? {
+            NodeJsVersion::Current(process_env) => get_current_nodejs_version(*process_env),
+            NodeJsVersion::Static(version) => *version,
+        }
+        .await?;
+
+        Ok(Vc::cell(Versions {
+            node: Some(
+                Version::from_str(&str).map_err(|_| anyhow!("Node.js version parse error"))?,
+            ),
+            ..Default::default()
+        }))
+    }
+}
 
 // TODO preset_env_base::Version implements Serialize/Deserialize incorrectly
 #[turbo_tasks::value(transparent, serialization = "none")]

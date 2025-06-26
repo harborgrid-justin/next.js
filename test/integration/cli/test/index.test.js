@@ -680,7 +680,7 @@ describe('CLI Usage', () => {
       }
 
       expect(output).toMatch(
-        '⚠ Port 3000 is in use, using available port 3001 instead.'
+        '⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.'
       )
     })
 

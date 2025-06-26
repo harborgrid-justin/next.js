@@ -79,10 +79,11 @@ const GLOBAL_NOT_FOUND_FILE_TYPE = 'global-not-found'
 const PAGE_SEGMENT = 'page$'
 const PARALLEL_CHILDREN_SEGMENT = 'children$'
 
-const defaultGlobalErrorPath = 'next/dist/client/components/global-error'
-const defaultNotFoundPath = 'next/dist/client/components/not-found-error'
-const defaultLayoutPath = 'next/dist/client/components/default-layout'
-const defaultGlobalNotFoundPath = 'next/dist/client/components/global-not-found'
+const defaultGlobalErrorPath = 'next/dist/client/components/global-error.js'
+const defaultNotFoundPath = 'next/dist/client/components/not-found-error.js'
+const defaultLayoutPath = 'next/dist/client/components/default-layout.js'
+const defaultGlobalNotFoundPath =
+  'next/dist/client/components/global-not-found.js'
 
 type DirResolver = (pathToResolve: string) => string
 type PathResolver = (

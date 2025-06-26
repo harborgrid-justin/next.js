@@ -1,9 +1,7 @@
 import * as React from 'react'
 import { lock, unlock } from './body-locker'
 
-export type OverlayProps = {
-  children?: React.ReactNode
-  className?: string
+export type OverlayProps = React.HTMLAttributes<HTMLDivElement> & {
   fixed?: boolean
 }
 

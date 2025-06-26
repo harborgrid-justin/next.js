@@ -238,9 +238,9 @@ export interface Project {
     aggregationMs: number
   ): AsyncIterableIterator<TurbopackResult<UpdateMessage>>
 
-  compilationEventsSubscribe(): AsyncIterableIterator<
-    TurbopackResult<CompilationEvent>
-  >
+  compilationEventsSubscribe(
+    eventTypes?: string[]
+  ): AsyncIterableIterator<TurbopackResult<CompilationEvent>>
 
   invalidatePersistentCache(): Promise<void>
 

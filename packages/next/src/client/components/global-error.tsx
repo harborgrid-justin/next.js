@@ -25,7 +25,7 @@ const styles = {
 export type GlobalErrorComponent = React.ComponentType<{
   error: any
 }>
-function GlobalError({ error }: { error: any }) {
+function DefaultGlobalError({ error }: { error: any }) {
   const digest: string | undefined = error?.digest
   return (
     <html id="__next_error__">
@@ -50,4 +50,4 @@ function GlobalError({ error }: { error: any }) {
 
 // Exported so that the import signature in the loaders can be identical to user
 // supplied custom global error signatures.
-export default GlobalError
+export default DefaultGlobalError

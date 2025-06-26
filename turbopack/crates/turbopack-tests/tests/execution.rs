@@ -242,6 +242,7 @@ async fn run_inner_operation(
 struct TestOptions {
     tree_shaking_mode: Option<TreeShakingMode>,
     remove_unused_exports: Option<bool>,
+    scope_hoisting: Option<bool>,
 }
 
 #[turbo_tasks::value]
@@ -373,7 +374,7 @@ async fn run_test_operation(prepared_test: ResolvedVc<PreparedTest>) -> Result<V
                 import_externals: true,
                 ..Default::default()
             },
-            preset_env_versions: Some(env),
+            environment: Some(env),
             tree_shaking_mode: options.tree_shaking_mode,
             rules: vec![(
                 ContextCondition::InDirectory("node_modules".into()),
@@ -435,6 +436,7 @@ async fn run_test_operation(prepared_test: ResolvedVc<PreparedTest>) -> Result<V
             ..Default::default()
         },
     )
+    .module_merging(options.scope_hoisting.unwrap_or(true))
     .build();
 
     let jest_entry_source = FileSource::new(jest_entry_path);

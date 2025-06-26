@@ -236,7 +236,7 @@ async fn apply_module_type(
                 .await?,
         ),
 
-        ModuleType::Css { ty } => ResolvedVc::upcast(
+        ModuleType::Css { ty, environment } => ResolvedVc::upcast(
             CssModuleAsset::new(
                 *source,
                 Vc::upcast(module_asset_context),
@@ -247,6 +247,7 @@ async fn apply_module_type(
                     .css
                     .minify_type,
                 css_import_context,
+                environment.as_deref().copied(),
             )
             .to_resolved()
             .await?,
@@ -564,7 +565,7 @@ async fn process_default_internal(
                         }
                     }
                     ModuleRuleEffect::ModuleType(module) => {
-                        current_module_type = Some(*module);
+                        current_module_type = Some(module.clone());
                     }
                     ModuleRuleEffect::ExtendEcmascriptTransforms { prepend, append } => {
                         current_module_type = match current_module_type {
@@ -687,6 +688,9 @@ async fn externals_tracing_module_context(ty: ExternalType) -> Result<Vc<ModuleA
                 source_maps: SourceMapsType::None,
                 ..Default::default()
             },
+            // Environment is not passed in order to avoid downleveling JS / CSS for
+            // node-file-trace.
+            environment: None,
             ..Default::default()
         }
         .cell(),

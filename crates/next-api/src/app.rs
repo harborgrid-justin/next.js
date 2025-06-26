@@ -242,6 +242,7 @@ impl AppProject {
             self.project().next_config(),
             NextRuntime::NodeJs,
             self.project().encryption_key(),
+            self.project().server_compile_time_info().environment(),
         ))
     }
 
@@ -255,6 +256,7 @@ impl AppProject {
             self.project().next_config(),
             NextRuntime::Edge,
             self.project().encryption_key(),
+            self.project().edge_compile_time_info().environment(),
         ))
     }
 
@@ -268,6 +270,7 @@ impl AppProject {
             self.project().next_config(),
             NextRuntime::NodeJs,
             self.project().encryption_key(),
+            self.project().server_compile_time_info().environment(),
         ))
     }
 
@@ -281,6 +284,7 @@ impl AppProject {
             self.project().next_config(),
             NextRuntime::Edge,
             self.project().encryption_key(),
+            self.project().edge_compile_time_info().environment(),
         ))
     }
 
@@ -425,7 +429,7 @@ impl AppProject {
     }
 
     #[turbo_tasks::function]
-    async fn rsc_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
+    fn rsc_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
         Ok(ModuleAssetContext::new(
             self.get_rsc_transitions(
                 self.ecmascript_client_reference_transition(),
@@ -440,7 +444,7 @@ impl AppProject {
     }
 
     #[turbo_tasks::function]
-    async fn edge_rsc_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
+    fn edge_rsc_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
         Ok(ModuleAssetContext::new(
             self.get_rsc_transitions(
                 self.edge_ecmascript_client_reference_transition(),
@@ -592,6 +596,7 @@ impl AppProject {
             self.project().next_config(),
             NextRuntime::NodeJs,
             self.project().encryption_key(),
+            self.project().server_compile_time_info().environment(),
         ))
     }
 
@@ -605,6 +610,7 @@ impl AppProject {
             self.project().next_config(),
             NextRuntime::Edge,
             self.project().encryption_key(),
+            self.project().edge_compile_time_info().environment(),
         ))
     }
 
@@ -672,7 +678,7 @@ impl AppProject {
     }
 
     #[turbo_tasks::function]
-    async fn shared_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
+    fn shared_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
         Ok(ModuleAssetContext::new(
             TransitionOptions {
                 ..Default::default()
@@ -732,7 +738,7 @@ impl AppProject {
     }
 
     #[turbo_tasks::function]
-    async fn edge_shared_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
+    fn edge_shared_module_context(self: Vc<Self>) -> Result<Vc<ModuleAssetContext>> {
         Ok(ModuleAssetContext::new(
             TransitionOptions {
                 ..Default::default()
@@ -1664,9 +1670,11 @@ impl AppEndpoint {
                     .await?
                     .is_production()
                 {
+                    let page_name = app_entry.pathname.clone();
                     server_assets.insert(ResolvedVc::upcast(
                         NftJsonAsset::new(
                             project,
+                            Some(page_name),
                             *rsc_chunk,
                             client_reference_manifest
                                 .iter()

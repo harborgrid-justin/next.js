@@ -1,21 +1,23 @@
-import type { HTMLProps } from 'react'
-import { css } from '../../utils/css'
-import type { DevToolsInfoPropsCore } from '../errors/dev-tools-indicator/dev-tools-info/dev-tools-info'
-import { DevToolsInfo } from '../errors/dev-tools-indicator/dev-tools-info/dev-tools-info'
 import { useSegmentTree, type SegmentTrieNode } from '../../segment-explorer'
+import { css } from '../../utils/css'
 import { cx } from '../../utils/cx'
 
 const isFileNode = (node: SegmentTrieNode) => {
   return !!node.value?.type && !!node.value?.pagePath
 }
 
-function PageSegmentTree({ tree }: { tree: SegmentTrieNode }) {
+export function PageSegmentTree({ isAppRouter }: { isAppRouter: boolean }) {
+  const tree = useSegmentTree()
   return (
     <div
       className="segment-explorer-content"
       data-nextjs-devtool-segment-explorer
     >
-      <PageSegmentTreeLayerPresentation node={tree} level={0} segment="" />
+      {isAppRouter ? (
+        <PageSegmentTreeLayerPresentation node={tree} level={0} segment="" />
+      ) : (
+        <p>Route Info currently is only available for the App Router.</p>
+      )}
     </div>
   )
 }
@@ -29,7 +31,6 @@ function PageSegmentTreeLayerPresentation({
   node: SegmentTrieNode
   level: number
 }) {
-  const nodeName = node.value?.type
   const childrenKeys = Object.keys(node.children)
 
   const sortedChildrenKeys = childrenKeys.sort((a, b) => {
@@ -97,42 +98,38 @@ function PageSegmentTreeLayerPresentation({
               ...{ paddingLeft: `${(level + 1) * 8}px` },
             }}
           >
-            <div className="segment-explorer-line">
-              <div className={`segment-explorer-line-text-${nodeName}`}>
-                <div className="segment-explorer-filename">
-                  {folderName && (
-                    <span className="segment-explorer-filename--path">
-                      {folderName}
-                      {/* hidden slashes for testing snapshots */}
-                      <small>{'/'}</small>
-                    </span>
-                  )}
-                  {/* display all the file segments in this level */}
-                  {filesChildrenKeys.length > 0 && (
-                    <span className="segment-explorer-files">
-                      {filesChildrenKeys.map((fileChildSegment) => {
-                        const childNode = node.children[fileChildSegment]
-                        if (!childNode || !childNode.value) {
-                          return null
-                        }
-                        const fileName =
-                          childNode.value.pagePath.split('/').pop() || ''
-                        return (
-                          <span
-                            key={fileChildSegment}
-                            className={cx(
-                              'segment-explorer-file-label',
-                              `segment-explorer-file-label--${childNode.value.type}`
-                            )}
-                          >
-                            {fileName}
-                          </span>
-                        )
-                      })}
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="segment-explorer-filename">
+              {folderName && (
+                <span className="segment-explorer-filename--path">
+                  {folderName}
+                  {/* hidden slashes for testing snapshots */}
+                  <small>{'/'}</small>
+                </span>
+              )}
+              {/* display all the file segments in this level */}
+              {filesChildrenKeys.length > 0 && (
+                <span className="segment-explorer-files">
+                  {filesChildrenKeys.map((fileChildSegment) => {
+                    const childNode = node.children[fileChildSegment]
+                    if (!childNode || !childNode.value) {
+                      return null
+                    }
+                    const fileName =
+                      childNode.value.pagePath.split('/').pop() || ''
+                    return (
+                      <span
+                        key={fileChildSegment}
+                        className={cx(
+                          'segment-explorer-file-label',
+                          `segment-explorer-file-label--${childNode.value.type}`
+                        )}
+                      >
+                        {fileName}
+                      </span>
+                    )
+                  })}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -162,23 +159,9 @@ function PageSegmentTreeLayerPresentation({
   )
 }
 
-export function SegmentsExplorer(
-  props: DevToolsInfoPropsCore & HTMLProps<HTMLDivElement>
-) {
-  const tree = useSegmentTree()
-
-  return (
-    <DevToolsInfo title="Route Info" {...props}>
-      <PageSegmentTree tree={tree} />
-    </DevToolsInfo>
-  )
-}
-
 export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
   .segment-explorer-content {
-    overflow-y: auto;
     font-size: var(--size-14);
-    margin: -12px -8px;
   }
 
   .segment-explorer-item {
@@ -186,7 +169,7 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
     border-radius: 6px;
   }
 
-  .segment-explorer-item:nth-child(odd) {
+  .segment-explorer-item:nth-child(even) {
     background-color: var(--color-background-200);
   }
 
@@ -196,6 +179,9 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
     padding-top: 10px;
     padding-bottom: 10px;
     padding-right: 4px;
+    white-space: pre;
+    cursor: default;
+    color: var(--color-gray-1000);
   }
 
   .segment-explorer-children--intended {
@@ -218,15 +204,6 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
     color: var(--color-gray-800);
   }
 
-  .segment-explorer-line {
-    white-space: pre;
-    cursor: default;
-  }
-
-  .segment-explorer-line {
-    color: var(--color-gray-1000);
-  }
-
   .segment-explorer-files {
     display: inline-flex;
     gap: 8px;
@@ -236,17 +213,32 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
     padding: 2px 6px;
     border-radius: 16px;
     font-size: var(--size-12);
-    line-height: 16px;
     font-weight: 500;
     user-select: none;
   }
   .segment-explorer-file-label--layout,
-  .segment-explorer-file-label--template {
+  .segment-explorer-file-label--template,
+  .segment-explorer-file-label--default {
     background-color: var(--color-gray-300);
     color: var(--color-gray-1000);
   }
   .segment-explorer-file-label--page {
     background-color: var(--color-blue-300);
     color: var(--color-blue-800);
+  }
+  .segment-explorer-file-label--not-found,
+  .segment-explorer-file-label--forbidden,
+  .segment-explorer-file-label--unauthorized {
+    background-color: var(--color-amber-300);
+    color: var(--color-amber-900);
+  }
+  .segment-explorer-file-label--loading {
+    background-color: var(--color-green-300);
+    color: var(--color-green-900);
+  }
+  .segment-explorer-file-label--error,
+  .segment-explorer-file-label--global-error {
+    background-color: var(--color-red-300);
+    color: var(--color-red-900);
   }
 `

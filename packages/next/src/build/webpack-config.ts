@@ -771,7 +771,6 @@ export default async function getBaseWebpackConfig(
       distDir,
       isClient,
       isEdgeServer,
-      isNodeServer,
       dev,
       config,
       pagesDir,
