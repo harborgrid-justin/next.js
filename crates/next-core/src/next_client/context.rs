@@ -158,12 +158,19 @@ pub async fn get_client_resolve_options_context(
     ty: ClientContextType,
     mode: Vc<NextMode>,
     next_config: Vc<NextConfig>,
+    has_rewrites: Vc<bool>,
     execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<ResolveOptionsContext>> {
-    let next_client_import_map =
-        get_next_client_import_map(*project_path, ty, next_config, mode, execution_context)
-            .to_resolved()
-            .await?;
+    let next_client_import_map = get_next_client_import_map(
+        *project_path,
+        ty,
+        next_config,
+        mode,
+        has_rewrites,
+        execution_context,
+    )
+    .to_resolved()
+    .await?;
     let next_client_fallback_import_map = get_next_client_fallback_import_map(ty)
         .to_resolved()
         .await?;
@@ -234,6 +241,7 @@ pub async fn get_client_module_options_context(
     ty: ClientContextType,
     mode: Vc<NextMode>,
     next_config: Vc<NextConfig>,
+    has_rewrites: Vc<bool>,
     encryption_key: ResolvedVc<RcStr>,
     no_mangling: Vc<bool>,
 ) -> Result<Vc<ModuleOptionsContext>> {
@@ -243,6 +251,7 @@ pub async fn get_client_module_options_context(
         ty,
         mode,
         next_config,
+        has_rewrites,
         *execution_context,
     );
 
@@ -509,11 +518,18 @@ pub async fn get_client_runtime_entries(
     ty: ClientContextType,
     mode: Vc<NextMode>,
     next_config: Vc<NextConfig>,
+    has_rewrites: Vc<bool>,
     execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<RuntimeEntries>> {
     let mut runtime_entries = vec![];
-    let resolve_options_context =
-        get_client_resolve_options_context(project_root, ty, mode, next_config, execution_context);
+    let resolve_options_context = get_client_resolve_options_context(
+        project_root,
+        ty,
+        mode,
+        next_config,
+        has_rewrites,
+        execution_context,
+    );
 
     if mode.await?.is_development() {
         let enable_react_refresh =

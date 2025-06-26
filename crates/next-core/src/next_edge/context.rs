@@ -108,6 +108,7 @@ pub async fn get_edge_resolve_options_context(
     ty: ServerContextType,
     mode: Vc<NextMode>,
     next_config: Vc<NextConfig>,
+    has_rewrites: Vc<bool>,
     execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<ResolveOptionsContext>> {
     let next_edge_import_map = get_next_edge_import_map(
@@ -115,6 +116,7 @@ pub async fn get_edge_resolve_options_context(
         ty.clone(),
         next_config,
         mode,
+        has_rewrites,
         execution_context,
     )
     .to_resolved()

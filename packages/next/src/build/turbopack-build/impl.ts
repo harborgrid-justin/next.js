@@ -80,6 +80,7 @@ export async function turbopackBuild(): Promise<{
       encryptionKey,
       previewProps,
       browserslistQuery: supportedBrowsers.join(', '),
+      hasRewrites,
       noMangling,
       currentNodeJsVersion,
     },

@@ -94,6 +94,7 @@ pub async fn get_next_client_import_map(
     ty: ClientContextType,
     next_config: Vc<NextConfig>,
     next_mode: Vc<NextMode>,
+    has_rewrites: Vc<bool>,
     execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<ImportMap>> {
     let mut import_map = ImportMap::empty();
@@ -235,6 +236,13 @@ pub async fn get_next_client_import_map(
             "next/dist/compiled/client-only" => "next/dist/compiled/client-only/index".to_string(),
         },
     );
+
+    if !*has_rewrites.await? {
+        import_map.insert_exact_alias(
+            "next/dist/shared/lib/router/utils/resolve-rewrites",
+            ImportMapping::Ignore.resolved_cell(),
+        );
+    }
 
     match ty {
         ClientContextType::Pages { .. }
@@ -385,6 +393,7 @@ pub async fn get_next_edge_import_map(
     ty: ServerContextType,
     next_config: Vc<NextConfig>,
     next_mode: Vc<NextMode>,
+    has_rewrites: Vc<bool>,
     execution_context: Vc<ExecutionContext>,
 ) -> Result<Vc<ImportMap>> {
     let mut import_map = ImportMap::empty();
@@ -476,6 +485,13 @@ pub async fn get_next_edge_import_map(
                 request_to_import_mapping(project_path, "next/dist/client/app-dir/link"),
             );
         }
+    }
+
+    if !*has_rewrites.await? {
+        import_map.insert_exact_alias(
+            "next/dist/shared/lib/router/utils/resolve-rewrites",
+            ImportMapping::Ignore.resolved_cell(),
+        );
     }
 
     insert_next_server_special_aliases(
