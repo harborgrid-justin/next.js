@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import type { SegmentNodeState } from '../userspace/app/segment-explorer-node'
 
 /**
  * Trie data structure for storing and searching paths
@@ -130,15 +131,8 @@ function createTrie<Value = string>({
   return { insert, remove, getRoot }
 }
 
-export type SegmentNode = {
-  type: string
-  pagePath: string
-  boundaryType: string | null
-  setBoundaryType: (type: string | null) => void
-}
-
-export type SegmentTrie = Trie<SegmentNode>
-export type SegmentTrieNode = TrieNode<SegmentNode>
+export type SegmentTrie = Trie<SegmentNodeState>
+export type SegmentTrieNode = TrieNode<SegmentNodeState>
 
 const trie: SegmentTrie = createTrie({
   compare: (a, b) => {

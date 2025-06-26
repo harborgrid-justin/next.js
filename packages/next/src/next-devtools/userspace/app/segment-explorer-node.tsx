@@ -6,6 +6,13 @@ import { useEffect } from 'react'
 import { dispatcher } from 'next/dist/compiled/next-devtools'
 import { notFound } from '../../../client/components/not-found'
 
+export type SegmentNodeState = {
+  type: string
+  pagePath: string
+  boundaryType: string | null
+  setBoundaryType: (type: 'error' | 'not-found' | 'loading' | null) => void
+}
+
 function SegmentTrieNode({
   type,
   pagePath,
@@ -14,7 +21,7 @@ function SegmentTrieNode({
   pagePath: string
 }): React.ReactNode {
   const { boundaryType, setBoundaryType } = useSegmentState()
-  const nodeState = useMemo(
+  const nodeState: SegmentNodeState = useMemo(
     () => ({
       type,
       pagePath,

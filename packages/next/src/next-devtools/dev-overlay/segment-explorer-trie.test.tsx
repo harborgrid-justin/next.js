@@ -15,8 +15,8 @@ const createSegmentNode = ({
 }): SegmentExplorer.SegmentNode => {
   function placeholder() {}
   return {
-    pagePath,
     type,
+    pagePath,
     boundaryType: null,
     setBoundaryType: placeholder,
   }

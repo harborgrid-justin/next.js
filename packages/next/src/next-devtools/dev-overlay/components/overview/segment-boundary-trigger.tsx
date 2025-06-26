@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import type { SegmentNodeState } from '../../../userspace/app/segment-explorer-node'
 
 export function SegmentBoundaryTrigger({
   onSelectBoundary,
 }: {
-  onSelectBoundary: (boundaryType: string | null) => void
+  onSelectBoundary: SegmentNodeState['setBoundaryType']
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -76,6 +77,10 @@ export function SegmentBoundaryTrigger({
   )
 }
 
+/**
+ * Inline svg icons for the dropdown trigger.
+ * The child svg icons like `rect` are fixed size, so they can be used as shared scalable icons.
+ */
 function DropdownIcon() {
   return (
     <svg
