@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useSegmentTree, type SegmentTrieNode } from '../../segment-explorer'
 import { css } from '../../utils/css'
 import { cx } from '../../utils/cx'
@@ -125,6 +127,7 @@ function PageSegmentTreeLayerPresentation({
                       <span
                         key={fileChildSegment}
                         onClick={() => {
+                          if (isBuiltin) return
                           openInEditor({ filePath })
                         }}
                         className={cx(
@@ -136,6 +139,7 @@ function PageSegmentTreeLayerPresentation({
                         {fileName}
                         {isBuiltin && (
                           <TooltipSpan
+                            direction="right"
                             title={`The default Next.js not found is being shown. You can customize this page by adding your own ${fileName} file to the app/ directory.`}
                           >
                             <InfoIcon />
@@ -174,6 +178,102 @@ function PageSegmentTreeLayerPresentation({
     </>
   )
 }
+
+const tooltipStyles = `
+  .tooltip-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  .tooltip {
+    position: absolute;
+    background: var(--color-gray-1000);
+    color: var(--color-gray-100);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: nowrap;
+    min-width: 200px;
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+  }
+
+  .tooltip-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+
+  /* Top direction */
+  .tooltip--top {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+  }
+
+  .tooltip-arrow--top {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--color-gray-1000);
+  }
+
+  /* Bottom direction */
+  .tooltip--bottom {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 8px;
+  }
+
+  .tooltip-arrow--bottom {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid var(--color-gray-1000);
+  }
+
+  /* Left direction */
+  .tooltip--left {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+  }
+
+  .tooltip-arrow--left {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 6px solid var(--color-gray-1000);
+  }
+
+  /* Right direction */
+  .tooltip--right {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 8px;
+  }
+
+  .tooltip-arrow--right {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-right: 6px solid var(--color-gray-1000);
+  }
+`
 
 export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
   .segment-explorer-content {
@@ -268,12 +368,15 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
     background-color: transparent;
     color: var(--color-gray-900);
     border: 1px dashed var(--color-gray-500);
+    cursor: default;
   }
 
   .segment-explorer-file-label--builtin svg {
     margin-left: 4px;
     margin-right: -4px;
   }
+
+  ${tooltipStyles}
 `
 
 function openInEditor({ filePath }: { filePath: string }) {
@@ -312,12 +415,88 @@ function InfoIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+type TooltipDirection = 'top' | 'bottom' | 'left' | 'right'
+
 function TooltipSpan({
   children,
   title,
+  direction = 'top',
 }: {
   children: React.ReactNode
   title: string
+  direction: TooltipDirection
 }) {
-  return <span title={title}>{children}</span>
+  const [isVisible, setIsVisible] = useState(false)
+  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const wrapperRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (isVisible && wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollLeft = window.scrollX || document.documentElement.scrollLeft
+
+      setPosition({
+        top: rect.top + scrollTop,
+        left: rect.left + scrollLeft,
+      })
+    }
+  }, [isVisible])
+
+  const handleMouseEnter = () => {
+    setIsVisible(true)
+  }
+
+  const handleMouseLeave = () => {
+    setIsVisible(false)
+  }
+
+  const tooltip = isVisible ? (
+    <div
+      className="custom-tooltip-portal"
+      style={{
+        position: 'absolute',
+        top: position.top,
+        left: position.left,
+        width: wrapperRef.current?.offsetWidth || 0,
+        height: wrapperRef.current?.offsetHeight || 0,
+        pointerEvents: 'none',
+        zIndex: 99999,
+      }}
+    >
+      <div className={cx('custom-tooltip', `custom-tooltip--${direction}`)}>
+        {title}
+        <div
+          className={cx(
+            'custom-tooltip-arrow',
+            `custom-tooltip-arrow--${direction}`
+          )}
+        />
+      </div>
+    </div>
+  ) : null
+
+  const [shadowRootRef] = useState<ShadowRoot | null>(() => {
+    const portal = document.querySelector('nextjs-portal')
+    if (!portal) return null
+    return portal.shadowRoot as ShadowRoot
+  })
+
+  if (!shadowRootRef) return null
+
+  return (
+    <>
+      <span
+        ref={wrapperRef}
+        className="tooltip-wrapper"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {children}
+      </span>
+      {typeof document !== 'undefined' &&
+        tooltip &&
+        createPortal(tooltip, shadowRootRef)}
+    </>
+  )
 }
