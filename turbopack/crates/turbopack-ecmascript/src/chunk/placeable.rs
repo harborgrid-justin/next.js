@@ -6,7 +6,11 @@ use turbopack_core::{
     asset::Asset,
     chunk::ChunkableModule,
     error::PrettyPrintError,
-    issue::{Issue, IssueExt, IssueSeverity, IssueStage, OptionStyledString, StyledString},
+    file_source::FileSource,
+    issue::{
+        Issue, IssueExt, IssueSeverity, IssueSource, IssueStage, OptionIssueSource,
+        OptionStyledString, StyledString,
+    },
     module::Module,
     resolve::{FindContextFileResult, find_context_file, package_json},
 };
@@ -44,7 +48,9 @@ enum SideEffectsValue {
 async fn side_effects_from_package_json(
     package_json: ResolvedVc<FileSystemPath>,
 ) -> Result<Vc<SideEffectsValue>> {
-    if let FileJsonContent::Content(content) = &*package_json.read_json().await?
+    let package_json_file = FileSource::new(*package_json).to_resolved().await?;
+    let package_json = &*package_json_file.content().parse_json().await?;
+    if let FileJsonContent::Content(content) = package_json
         && let Some(side_effects) = content.get("sideEffects")
     {
         if let Some(side_effects) = side_effects.as_bool() {
@@ -63,7 +69,10 @@ async fn side_effects_from_package_json(
                         }
                     } else {
                         SideEffectsInPackageJsonIssue {
-                            path: package_json,
+                            // TODO(PACK-4879): This should point at the buggy element
+                            source: IssueSource::from_source_only(ResolvedVc::upcast(
+                                package_json_file,
+                            )),
                             description: Some(
                                 StyledString::Text(
                                     format!(
@@ -85,7 +94,10 @@ async fn side_effects_from_package_json(
                         Ok(glob) => Ok(Some(glob)),
                         Err(err) => {
                             SideEffectsInPackageJsonIssue {
-                                path: package_json,
+                                // TODO(PACK-4879): This should point at the buggy glob
+                                source: IssueSource::from_source_only(ResolvedVc::upcast(
+                                    package_json_file,
+                                )),
                                 description: Some(
                                     StyledString::Text(
                                         format!(
@@ -110,7 +122,8 @@ async fn side_effects_from_package_json(
             );
         } else {
             SideEffectsInPackageJsonIssue {
-                path: package_json,
+                // TODO(PACK-4879): This should point at the buggy value
+                source: IssueSource::from_source_only(ResolvedVc::upcast(package_json_file)),
                 description: Some(
                     StyledString::Text(
                         format!(
@@ -130,7 +143,7 @@ async fn side_effects_from_package_json(
 
 #[turbo_tasks::value]
 struct SideEffectsInPackageJsonIssue {
-    path: ResolvedVc<FileSystemPath>,
+    source: IssueSource,
     description: Option<ResolvedVc<StyledString>>,
 }
 
@@ -147,7 +160,7 @@ impl Issue for SideEffectsInPackageJsonIssue {
 
     #[turbo_tasks::function]
     fn file_path(&self) -> Vc<FileSystemPath> {
-        *self.path
+        self.source.file_path()
     }
 
     #[turbo_tasks::function]
@@ -158,6 +171,11 @@ impl Issue for SideEffectsInPackageJsonIssue {
     #[turbo_tasks::function]
     fn description(&self) -> Vc<OptionStyledString> {
         Vc::cell(self.description)
+    }
+
+    #[turbo_tasks::function]
+    fn source(&self) -> Vc<OptionIssueSource> {
+        Vc::cell(Some(self.source))
     }
 }
 

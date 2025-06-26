@@ -1226,7 +1226,7 @@ enum ExportsFieldResult {
 /// appropriate [AliasMap] for lookups.
 #[turbo_tasks::function]
 async fn exports_field(
-    package_json_path: ResolvedVc<FileSystemPath>,
+    package_json_path: ResolvedVc<Box<dyn Source>>,
 ) -> Result<Vc<ExportsFieldResult>> {
     let read = read_package_json(*package_json_path).await?;
     let package_json = match &*read {
@@ -1241,8 +1241,9 @@ async fn exports_field(
         Ok(exports) => Ok(ExportsFieldResult::Some(exports).cell()),
         Err(err) => {
             PackageJsonIssue {
-                path: package_json_path,
                 error_message: err.to_string().into(),
+                // TODO(PACK-4879): add line column information
+                source: IssueSource::from_source_only(package_json_path),
             }
             .resolved_cell()
             .emit();
@@ -1268,8 +1269,11 @@ async fn imports_field(lookup_path: Vc<FileSystemPath>) -> Result<Vc<ImportsFiel
     let FindContextFileResult::Found(package_json_path, _refs) = &*package_json_context else {
         return Ok(ImportsFieldResult::None.cell());
     };
+    let source = Vc::upcast::<Box<dyn Source>>(FileSource::new(**package_json_path))
+        .to_resolved()
+        .await?;
 
-    let read = read_package_json(**package_json_path).await?;
+    let read = read_package_json(*source).await?;
     let package_json = match &*read {
         Some(json) => json,
         None => return Ok(ImportsFieldResult::None.cell()),
@@ -1282,8 +1286,9 @@ async fn imports_field(lookup_path: Vc<FileSystemPath>) -> Result<Vc<ImportsFiel
         Ok(imports) => Ok(ImportsFieldResult::Some(imports, *package_json_path).cell()),
         Err(err) => {
             PackageJsonIssue {
-                path: *package_json_path,
                 error_message: err.to_string().into(),
+                // TODO(PACK-4879): Add line-column information
+                source: IssueSource::from_source_only(source),
             }
             .resolved_cell()
             .emit();
@@ -1352,7 +1357,8 @@ pub async fn find_context_file_or_package_key(
     let mut refs = Vec::new();
     let package_json_path = lookup_path.join(rcstr!("package.json"));
     if let Some(package_json_path) = exists(package_json_path, &mut refs).await?
-        && let Some(json) = &*read_package_json(*package_json_path).await?
+        && let Some(json) =
+            &*read_package_json(Vc::upcast(FileSource::new(*package_json_path))).await?
         && json.get(&*package_key).is_some()
     {
         return Ok(FindContextFileResult::Found(package_json_path, refs).into());
@@ -2127,7 +2133,8 @@ async fn resolve_into_folder(
     for resolve_into_package in options_value.into_package.iter() {
         match resolve_into_package {
             ResolveIntoPackage::MainField { field: name } => {
-                if let Some(package_json) = &*read_package_json(package_json_path).await?
+                if let Some(package_json) =
+                    &*read_package_json(Vc::upcast(FileSource::new(package_json_path))).await?
                     && let Some(field_value) = package_json[name.as_str()].as_str()
                 {
                     let normalized_request: RcStr = normalize_request(field_value).into();
@@ -2415,7 +2422,7 @@ async fn apply_in_package(
             continue;
         };
 
-        let read = read_package_json(**package_json_path).await?;
+        let read = read_package_json(Vc::upcast(FileSource::new(**package_json_path))).await?;
         let Some(package_json) = &*read else {
             continue;
         };
@@ -2508,7 +2515,7 @@ async fn find_self_reference(
 ) -> Result<Vc<FindSelfReferencePackageResult>> {
     let package_json_context = find_context_file(lookup_path, package_json()).await?;
     if let FindContextFileResult::Found(package_json_path, _refs) = &*package_json_context {
-        let read = read_package_json(**package_json_path).await?;
+        let read = read_package_json(Vc::upcast(FileSource::new(**package_json_path))).await?;
         if let Some(json) = &*read
             && json.get("exports").is_some()
             && let Some(name) = json["name"].as_str()
@@ -2669,7 +2676,7 @@ async fn resolve_into_package(
             } => {
                 let package_json_path = package_path.join(rcstr!("package.json"));
                 let ExportsFieldResult::Some(exports_field) =
-                    &*exports_field(package_json_path).await?
+                    &*exports_field(Vc::upcast(FileSource::new(package_json_path))).await?
                 else {
                     continue;
                 };
