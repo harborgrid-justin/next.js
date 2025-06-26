@@ -21,6 +21,8 @@ export function normalizeConventionFilePath(
   // If it's internal file only keep the filename, strip nextjs internal prefix
   if (nextInternalPrefixRegex.test(relativePath)) {
     relativePath = relativePath.replace(nextInternalPrefixRegex, '')
+    // Add a special prefix to let segment explorer know it's a built-in component
+    relativePath = `__next_builtin__${relativePath}`
   }
 
   return relativePath

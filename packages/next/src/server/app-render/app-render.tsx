@@ -3980,7 +3980,13 @@ const getGlobalErrorStyles = async (
     if (ctx.renderOpts.devtoolSegmentExplorer && globalErrorModulePath) {
       const SegmentViewNode = ctx.componentMod.SegmentViewNode
       globalErrorStyles = (
-        <SegmentViewNode type="global-error" pagePath={globalErrorModulePath}>
+        // This will be rendered next to GlobalError component under ErrorBoundary,
+        // it requires a key to avoid React warning about duplicate keys.
+        <SegmentViewNode
+          key="ge-svn"
+          type="global-error"
+          pagePath={globalErrorModulePath}
+        >
           {globalErrorStyles}
         </SegmentViewNode>
       )
