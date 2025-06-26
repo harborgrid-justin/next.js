@@ -2405,6 +2405,21 @@ enum CodeGenResultCommentsConsumable<'a> {
 unsafe impl Send for CodeGenResultComments {}
 unsafe impl Sync for CodeGenResultComments {}
 
+/// All BytePos in Spans in the AST are encoded correctly in [`merge_modules`], but the Comments
+/// also contain spans. These also need to be encoded so that all pos in `mappings` are consistently
+/// encoded.
+fn encode_module_into_comment_span(
+    modules_header_width: u32,
+    module: usize,
+    mut comment: Comment,
+) -> Comment {
+    comment.span.lo =
+        CodeGenResultComments::encode_bytepos(modules_header_width, module as u32, comment.span.lo);
+    comment.span.hi =
+        CodeGenResultComments::encode_bytepos(modules_header_width, module as u32, comment.span.hi);
+    comment
+}
+
 impl Comments for CodeGenResultCommentsConsumable<'_> {
     fn add_leading(&self, _pos: BytePos, _cmt: Comment) {
         unimplemented!()
@@ -2448,7 +2463,12 @@ impl Comments for CodeGenResultCommentsConsumable<'_> {
             } => {
                 let (module, pos) =
                     CodeGenResultComments::decode_bytepos(*modules_header_width, pos);
-                comments[module].take_leading(pos)
+                comments[module].take_leading(pos).map(|comments| {
+                    comments
+                        .into_iter()
+                        .map(|c| encode_module_into_comment_span(*modules_header_width, module, c))
+                        .collect()
+                })
             }
             Self::Empty => None,
         }
@@ -2466,7 +2486,12 @@ impl Comments for CodeGenResultCommentsConsumable<'_> {
             } => {
                 let (module, pos) =
                     CodeGenResultComments::decode_bytepos(*modules_header_width, pos);
-                comments[module].get_leading(pos)
+                comments[module].get_leading(pos).map(|comments| {
+                    comments
+                        .into_iter()
+                        .map(|c| encode_module_into_comment_span(*modules_header_width, module, c))
+                        .collect()
+                })
             }
             Self::Empty => None,
         }
@@ -2517,7 +2542,12 @@ impl Comments for CodeGenResultCommentsConsumable<'_> {
             } => {
                 let (module, pos) =
                     CodeGenResultComments::decode_bytepos(*modules_header_width, pos);
-                comments[module].take_trailing(pos)
+                comments[module].take_trailing(pos).map(|comments| {
+                    comments
+                        .into_iter()
+                        .map(|c| encode_module_into_comment_span(*modules_header_width, module, c))
+                        .collect()
+                })
             }
             Self::Empty => None,
         }
@@ -2535,7 +2565,12 @@ impl Comments for CodeGenResultCommentsConsumable<'_> {
             } => {
                 let (module, pos) =
                     CodeGenResultComments::decode_bytepos(*modules_header_width, pos);
-                comments[module].get_leading(pos)
+                comments[module].get_leading(pos).map(|comments| {
+                    comments
+                        .into_iter()
+                        .map(|c| encode_module_into_comment_span(*modules_header_width, module, c))
+                        .collect()
+                })
             }
             Self::Empty => None,
         }
