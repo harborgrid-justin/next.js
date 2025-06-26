@@ -1,10 +1,13 @@
-import { useState } from 'react'
 import {
   useSegmentTree,
   type SegmentTrieNode,
 } from '../../segment-explorer-trie'
 import { css } from '../../utils/css'
 import { cx } from '../../utils/cx'
+import {
+  SegmentBoundaryTrigger,
+  styles as segmentBoundaryTriggerStyles,
+} from './segment-boundary-trigger'
 
 const BUILTIN_PREFIX = '__next_builtin__'
 
@@ -103,15 +106,6 @@ function PageSegmentTreeLayerPresentation({
   }
 
   const hasFilesChildren = filesChildrenKeys.length > 0
-  const [selectedBoundaryType, setSelectedBoundaryType] = useState<
-    string | null
-  >(null)
-
-  const handleChangeBoundaryType = (boundaryType: string | null) => {
-    if (!pageChild || !pageChild.value) return
-    setSelectedBoundaryType(boundaryType)
-    pageChild.value.setBoundaryType(boundaryType)
-  }
 
   return (
     <>
@@ -177,8 +171,7 @@ function PageSegmentTreeLayerPresentation({
 
               {pageChild && pageChild.value && (
                 <SegmentBoundaryTrigger
-                  selectedBoundary={selectedBoundaryType}
-                  onSelectBoundary={handleChangeBoundaryType}
+                  onSelectBoundary={pageChild.value.setBoundaryType}
                 />
               )}
             </div>
@@ -207,46 +200,6 @@ function PageSegmentTreeLayerPresentation({
         )
       })}
     </>
-  )
-}
-
-function SegmentBoundaryTrigger({
-  selectedBoundary,
-  onSelectBoundary,
-}: {
-  selectedBoundary: string | null
-  onSelectBoundary: (boundaryType: string | null) => void
-}) {
-  return (
-    <select
-      data-nextjs-devtool-segment-explorer-boundary-trigger
-      onChange={(e) => {
-        const value = e.target.value
-
-        if (value === 'not-found') {
-          onSelectBoundary('not-found')
-        } else if (value === 'loading') {
-          onSelectBoundary('loading')
-        } else if (value === 'error') {
-          onSelectBoundary('error')
-        } else if (value === 'reset') {
-          onSelectBoundary(null)
-        }
-      }}
-      className="segment-explorer-file-label--operations"
-      value={selectedBoundary || 'reset'}
-    >
-      {[
-        { label: 'Reset', value: 'reset' },
-        { label: 'Not Found', value: 'not-found' },
-        { label: 'Loading', value: 'loading' },
-        { label: 'Error', value: 'error' },
-      ].map((option) => (
-        <option key={option.label} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
   )
 }
 
@@ -282,6 +235,7 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
   .segment-explorer-filename {
     display: inline-flex;
     width: 100%;
+    align-items: center;
   }
 
   .segment-explorer-filename select {
@@ -306,6 +260,10 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
   }
 
   .segment-explorer-file-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
     padding: 2px 6px;
     border-radius: 16px;
     font-size: var(--size-12);
@@ -343,17 +301,17 @@ export const DEV_TOOLS_INFO_RENDER_FILES_STYLES = css`
     background-color: var(--color-red-300);
     color: var(--color-red-900);
   }
-
   .segment-explorer-file-label--builtin {
     background-color: transparent;
     color: var(--color-gray-900);
     border: 1px dashed var(--color-gray-500);
   }
-
   .segment-explorer-file-label--builtin svg {
     margin-left: 4px;
     margin-right: -4px;
   }
+
+  ${segmentBoundaryTriggerStyles}
 `
 
 function openInEditor({ filePath }: { filePath: string }) {

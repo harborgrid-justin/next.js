@@ -36,13 +36,15 @@ export function onCaughtError(
       (errorInfo.errorBoundary! as InstanceType<typeof ErrorBoundaryHandler>)
         .props.errorComponent === DefaultErrorBoundary)
 
+  // Skip the segment explorer triggered error
+  if (
+    thrownValue instanceof Error &&
+    thrownValue.message === '__NEXT_DEVTOOLS_SEGMENT_ERROR__'
+  ) {
+    return
+  }
+
   if (isImplicitErrorBoundary) {
-    if (
-      thrownValue instanceof Error &&
-      thrownValue.message === '__NEXT_DEVTOOLS_SEGMENT_ERROR__'
-    ) {
-      return
-    }
     // We don't consider errors caught unless they're caught by an explicit error
     // boundary. The built-in ones are considered implicit.
     // This mimics how the same app would behave without Next.js.
