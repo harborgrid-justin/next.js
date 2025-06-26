@@ -13,11 +13,12 @@ const createSegmentNode = ({
   pagePath: string
   type: string
 }): SegmentExplorer.SegmentNode => {
+  function placeholder() {}
   return {
     pagePath,
     type,
     boundaryType: null,
-    setBoundaryType: () => {},
+    setBoundaryType: placeholder,
   }
 }
 
@@ -32,7 +33,8 @@ describe('Segment Explorer', () => {
     jest.resetModules()
     jest.clearAllMocks()
 
-    const segmentExplorer = require('./segment-explorer')
+    const segmentExplorer =
+      require('./segment-explorer-trie') as typeof SegmentExplorer
     useSegmentTree = segmentExplorer.useSegmentTree
     insertSegmentNode = segmentExplorer.insertSegmentNode
     removeSegmentNode = segmentExplorer.removeSegmentNode
@@ -69,6 +71,8 @@ describe('Segment Explorer', () => {
                   value: {
                     pagePath: '/a/layout.js',
                     type: 'layout',
+                    boundaryType: null,
+                    setBoundaryType: expect.anything(),
                   },
                 },
                 'page.js': {
@@ -76,6 +80,8 @@ describe('Segment Explorer', () => {
                   value: {
                     pagePath: '/a/page.js',
                     type: 'page',
+                    boundaryType: null,
+                    setBoundaryType: expect.anything(),
                   },
                 },
               },
@@ -86,6 +92,8 @@ describe('Segment Explorer', () => {
               value: {
                 pagePath: '/layout.js',
                 type: 'layout',
+                boundaryType: null,
+                setBoundaryType: expect.anything(),
               },
             },
           },
@@ -130,6 +138,8 @@ describe('Segment Explorer', () => {
                           value: {
                             pagePath: '/a/b/@sidebar/page.js',
                             type: 'page',
+                            boundaryType: null,
+                            setBoundaryType: expect.anything(),
                           },
                         },
                       },
@@ -140,6 +150,8 @@ describe('Segment Explorer', () => {
                       value: {
                         pagePath: '/a/b/layout.js',
                         type: 'layout',
+                        boundaryType: null,
+                        setBoundaryType: expect.anything(),
                       },
                     },
                     'page.js': {
@@ -147,6 +159,8 @@ describe('Segment Explorer', () => {
                       value: {
                         pagePath: '/a/b/page.js',
                         type: 'page',
+                        boundaryType: null,
+                        setBoundaryType: expect.anything(),
                       },
                     },
                   },
@@ -157,6 +171,8 @@ describe('Segment Explorer', () => {
                   value: {
                     pagePath: '/a/layout.js',
                     type: 'layout',
+                    boundaryType: null,
+                    setBoundaryType: expect.anything(),
                   },
                 },
               },
@@ -167,6 +183,8 @@ describe('Segment Explorer', () => {
               value: {
                 pagePath: '/layout.js',
                 type: 'layout',
+                boundaryType: null,
+                setBoundaryType: expect.anything(),
               },
             },
           },
@@ -195,6 +213,8 @@ describe('Segment Explorer', () => {
                           value: {
                             pagePath: '/a/b/@sidebar/page.js',
                             type: 'page',
+                            boundaryType: null,
+                            setBoundaryType: expect.anything(),
                           },
                         },
                       },
@@ -205,6 +225,8 @@ describe('Segment Explorer', () => {
                       value: {
                         pagePath: '/a/b/page.js',
                         type: 'page',
+                        boundaryType: null,
+                        setBoundaryType: expect.anything(),
                       },
                     },
                   },
@@ -215,6 +237,8 @@ describe('Segment Explorer', () => {
                   value: {
                     pagePath: '/a/layout.js',
                     type: 'layout',
+                    boundaryType: null,
+                    setBoundaryType: expect.anything(),
                   },
                 },
               },
@@ -225,6 +249,8 @@ describe('Segment Explorer', () => {
               value: {
                 pagePath: '/layout.js',
                 type: 'layout',
+                boundaryType: null,
+                setBoundaryType: expect.anything(),
               },
             },
           },
