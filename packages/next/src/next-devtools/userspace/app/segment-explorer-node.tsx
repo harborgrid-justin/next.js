@@ -57,6 +57,19 @@ function LoadingSegmentNode(): React.ReactNode {
   return null
 }
 
+export function SegmentViewStateNode({ page }: { page: string }) {
+  useLayoutEffect(() => {
+    const state = {
+      page,
+    }
+    dispatcher.segmentExplorerUpdateRouteState(state)
+    return () => {
+      dispatcher.segmentExplorerUpdateRouteState(state)
+    }
+  }, [page])
+  return null
+}
+
 export function SegmentViewNode({
   type,
   pagePath,
