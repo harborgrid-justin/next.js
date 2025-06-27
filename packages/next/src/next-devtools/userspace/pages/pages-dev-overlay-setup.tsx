@@ -122,8 +122,6 @@ export function register() {
     Error.stackTraceLimit = 50
   } catch {}
 
-  console.log('patching logs on pages side')
-
   if (isTerminalLoggingEnabled()) {
     initializeDebugLogForwarding('pages')
   }
