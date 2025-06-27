@@ -144,6 +144,58 @@ function processConsoleFormatStrings(args: any[]): any[] {
   return args
 }
 
+// in the case of logging errors, we want to ignore all css
+// passed since we apply our own custom coloring to error
+// stacks and code blocks
+function processConsoleFormatStringsNoCss(args: any[]): any[] {
+  if (args.length === 0 || typeof args[0] !== 'string') return args
+
+  const fmtIn = String(args[0])
+  const rest = args.slice(1)
+
+  if (!fmtIn.includes('%')) return args
+
+  let fmtOut = ''
+  const outArgs: any[] = []
+  let argPtr = 0
+
+  for (let i = 0; i < fmtIn.length; i++) {
+    if (fmtIn[i] !== '%') {
+      fmtOut += fmtIn[i]
+      continue
+    }
+
+    if (fmtIn[i + 1] === '%') {
+      fmtOut += '%%'
+      i++
+      continue
+    }
+
+    const token = fmtIn[++i]
+
+    if (token === 'c') {
+      argPtr++
+      continue
+    }
+
+    if ('sdifoOj'.includes(token) || token === 'O') {
+      fmtOut += '%' + token
+      outArgs.push(rest[argPtr++])
+      continue
+    }
+
+    fmtOut += '%' + token
+  }
+
+  if (argPtr < rest.length) outArgs.push(...rest.slice(argPtr))
+
+  try {
+    return [util.format(fmtOut, ...outArgs)]
+  } catch {
+    return args
+  }
+}
+
 async function prepareFormattedErrorArgs(
   entry: Extract<ServerLogEntry, { kind: 'formatted-error' }>,
   ctx: MappingContext,
@@ -194,7 +246,7 @@ async function prepareConsoleErrorArgs(
   )
 
   if (entry.args.some((a) => a.kind === 'formatted-error-arg')) {
-    return processConsoleFormatStrings(deserialized)
+    return processConsoleFormatStringsNoCss(deserialized)
   }
   const mappedStack = await getSourceMappedStackFrames(
     entry.consoleErrorStack,
