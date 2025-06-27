@@ -195,9 +195,6 @@ function DevOverlayRoot({
     isRecoverableError
   )
 
-
-
-
   useInsertionEffect(() => {
     maybeDispatch = dispatch
 

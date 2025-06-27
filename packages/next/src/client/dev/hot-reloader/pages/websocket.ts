@@ -16,7 +16,6 @@ export function addMessageListener(callback: ActionCallback) {
   eventCallbacks.push(callback)
 }
 
-// mark: sending pages router web socket available here
 export function sendMessage(data: string) {
   if (!source || source.readyState !== source.OPEN) return
   return source.send(data)

@@ -82,7 +82,6 @@ export const logStringify = (data: unknown): string => {
 }
 
 let isPatched = false
-let restoreFunctions: Array<() => void> = []
 
 export const logQueue: {
   entries: Array<LogEntry>
@@ -372,7 +371,7 @@ export function forwardUnhandledError(error: Error) {
 }
 
 // todo: this router check is brittle, we need to update based on the current router the user is using
-export const patchLogs = (router: 'app' | 'pages'): void => {
+export const initializeDebugLogForwarding = (router: 'app' | 'pages'): void => {
   // probably don't need this
   if (isPatched) {
     return
@@ -393,18 +392,7 @@ export const patchLogs = (router: 'app' | 'pages'): void => {
     'trace',
   ]
 
-  restoreFunctions = levels.map((level) => patchConsoleMethod(level))
-
+  levels.forEach((level) => patchConsoleMethod(level))
   logQueue.router = router
   isPatched = true
-}
-
-export const unpatchLogs = (): void => {
-  if (!isPatched) {
-    return
-  }
-
-  restoreFunctions.forEach((restore) => restore())
-  restoreFunctions = []
-  isPatched = false
 }

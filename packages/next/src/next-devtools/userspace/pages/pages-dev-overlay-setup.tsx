@@ -11,7 +11,7 @@ import { isRecoverableError } from '../../../client/react-client-callbacks/on-re
 import { getSquashedHydrationErrorDetails } from './hydration-error-state'
 import { PagesDevOverlayErrorBoundary } from './pages-dev-overlay-error-boundary'
 import {
-  patchLogs,
+  initializeDebugLogForwarding,
   forwardUnhandledError,
   logUnhandledRejection,
   forwardErrorLog,
@@ -83,7 +83,7 @@ function nextJsHandleConsoleError(...args: any[]) {
   storeHydrationErrorStateFromConsoleArgs(...args)
   // TODO: Surfaces non-errors logged via `console.error`.
   handleError(maybeError)
-  // todo: attach hydration state to forwarded logs
+  // todo(rob): should we attach hydration state to forwarded logs
   forwardErrorLog(args)
   origConsoleError.apply(window.console, args)
 }
@@ -125,7 +125,7 @@ export function register() {
   console.log('patching logs on pages side')
 
   if (isTerminalLoggingEnabled()) {
-    patchLogs('pages')
+    initializeDebugLogForwarding('pages')
   }
   window.addEventListener('error', onUnhandledError)
   window.addEventListener('unhandledrejection', onUnhandledRejection)

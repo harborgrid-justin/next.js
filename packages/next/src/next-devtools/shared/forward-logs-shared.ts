@@ -16,7 +16,7 @@ export type LogMethod =
 export type ConsoleEntry = {
   kind: 'console'
   method: LogMethod
-  consoleMethodStack: string | null // fix name
+  consoleMethodStack: string | null
   args: Array<
     | {
         kind: 'arg'
