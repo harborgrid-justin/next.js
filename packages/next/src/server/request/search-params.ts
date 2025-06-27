@@ -91,7 +91,13 @@ export function createServerSearchParamsForServerPage(
   const workUnitStore = workUnitAsyncStorage.getStore()
   if (workUnitStore) {
     switch (workUnitStore.type) {
-      case 'prerender':
+      case 'prerender': {
+        if (workUnitStore.allowedDynamicApis?.searchParams) {
+          return createRenderSearchParams(underlyingSearchParams, workStore)
+        } else {
+          return createPrerenderSearchParams(workStore, workUnitStore)
+        }
+      }
       case 'prerender-client':
       case 'prerender-ppr':
       case 'prerender-legacy':

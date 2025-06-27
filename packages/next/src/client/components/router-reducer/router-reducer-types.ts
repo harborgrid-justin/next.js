@@ -147,6 +147,7 @@ export interface ServerPatchAction {
 
 export enum PrefetchKind {
   AUTO = 'auto',
+  DYNAMIC = 'dynamic',
   FULL = 'full',
   TEMPORARY = 'temporary',
 }

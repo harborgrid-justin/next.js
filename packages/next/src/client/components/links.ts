@@ -22,7 +22,7 @@ type Element = LinkElement | HTMLFormElement
 // shape for both to prevent a polymorphic de-opt in the VM.
 type LinkOrFormInstanceShared = {
   router: AppRouterInstance
-  kind: PrefetchKind.AUTO | PrefetchKind.FULL
+  kind: PrefetchKind.AUTO | PrefetchKind.DYNAMIC | PrefetchKind.FULL
 
   isVisible: boolean
 
@@ -140,7 +140,7 @@ export function mountLinkInstance(
   element: LinkElement,
   href: string,
   router: AppRouterInstance,
-  kind: PrefetchKind.AUTO | PrefetchKind.FULL,
+  kind: PrefetchKind.AUTO | PrefetchKind.DYNAMIC | PrefetchKind.FULL,
   prefetchEnabled: boolean,
   setOptimisticLinkStatus: (status: { pending: boolean }) => void
 ): LinkInstance {
@@ -178,7 +178,7 @@ export function mountFormInstance(
   element: HTMLFormElement,
   href: string,
   router: AppRouterInstance,
-  kind: PrefetchKind.AUTO | PrefetchKind.FULL
+  kind: PrefetchKind.AUTO | PrefetchKind.DYNAMIC | PrefetchKind.FULL
 ): void {
   const prefetchURL = coercePrefetchableUrl(href)
   if (prefetchURL === null) {
@@ -303,7 +303,10 @@ function rescheduleLinkPrefetch(
       instance.prefetchTask = scheduleSegmentPrefetchTask(
         cacheKey,
         treeAtTimeOfPrefetch,
-        instance.kind === PrefetchKind.FULL,
+        instance.kind === PrefetchKind.FULL ||
+          instance.kind === PrefetchKind.DYNAMIC
+          ? instance.kind
+          : null,
         priority,
         null
       )
@@ -313,7 +316,10 @@ function rescheduleLinkPrefetch(
       reschedulePrefetchTask(
         existingPrefetchTask,
         treeAtTimeOfPrefetch,
-        instance.kind === PrefetchKind.FULL,
+        instance.kind === PrefetchKind.FULL ||
+          instance.kind === PrefetchKind.DYNAMIC
+          ? instance.kind
+          : null,
         priority
       )
     }
@@ -347,7 +353,10 @@ export function pingVisibleLinks(
     instance.prefetchTask = scheduleSegmentPrefetchTask(
       cacheKey,
       tree,
-      instance.kind === PrefetchKind.FULL,
+      instance.kind === PrefetchKind.FULL ||
+        instance.kind === PrefetchKind.DYNAMIC
+        ? instance.kind
+        : null,
       PrefetchPriority.Default,
       null
     )

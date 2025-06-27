@@ -660,7 +660,7 @@ export default abstract class Server<
 
       // Mark the request as a router prefetch request.
       req.headers[RSC_HEADER.toLowerCase()] = '1'
-      req.headers[NEXT_ROUTER_PREFETCH_HEADER.toLowerCase()] = '1'
+      req.headers[NEXT_ROUTER_PREFETCH_HEADER.toLowerCase()] = '1' // TODO(dynamic-ppr) - might need to change
       req.headers[NEXT_ROUTER_SEGMENT_PREFETCH_HEADER.toLowerCase()] =
         segmentPath
 
@@ -675,7 +675,7 @@ export default abstract class Server<
 
       // Mark the request as a router prefetch request.
       req.headers[RSC_HEADER.toLowerCase()] = '1'
-      req.headers[NEXT_ROUTER_PREFETCH_HEADER.toLowerCase()] = '1'
+      req.headers[NEXT_ROUTER_PREFETCH_HEADER.toLowerCase()] = '1' // TODO(dynamic-ppr) - is this relevant?
       addRequestMeta(req, 'isRSCRequest', true)
       addRequestMeta(req, 'isPrefetchRSCRequest', true)
     } else if (this.normalizers.rsc?.match(parsedUrl.pathname)) {
@@ -699,6 +699,7 @@ export default abstract class Server<
     } else if (req.headers[RSC_HEADER.toLowerCase()] === '1') {
       addRequestMeta(req, 'isRSCRequest', true)
 
+      // TODO(dynamic-ppr)
       if (req.headers[NEXT_ROUTER_PREFETCH_HEADER.toLowerCase()] === '1') {
         addRequestMeta(req, 'isPrefetchRSCRequest', true)
 
@@ -1055,6 +1056,16 @@ export default abstract class Server<
       this.attachRequestMeta(req, parsedUrl)
 
       let finished = await this.handleRSCRequest(req, res, parsedUrl)
+      // eslint-disable-next-line no-useless-concat
+      console.log('='.repeat(60) + '\n' + 'handleRequestImpl', {
+        url: parsedUrl.href,
+        prefetch: (() => {
+          const prefetchHeader = req.headers['next-router-prefetch']
+          const segmentPrefetch = req.headers['next-router-segment-prefetch']
+          return { prefetch: prefetchHeader, segment: segmentPrefetch }
+        })(),
+        meta: getRequestMeta(req),
+      })
       if (finished) return
 
       const domainLocale = this.i18nProvider?.detectDomainLocale(

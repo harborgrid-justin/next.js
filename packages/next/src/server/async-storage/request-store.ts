@@ -66,6 +66,7 @@ type RequestContext = RequestResponsePair & {
   }
   phase: RequestStore['phase']
   renderOpts?: WrapperRenderOpts
+  isDynamicPrefetch: boolean
   isHmrRefresh?: boolean
   serverComponentsHmrCache?: ServerComponentsHmrCache
   implicitTags: ImplicitTags
@@ -108,6 +109,7 @@ export function createRequestStoreForRender(
   req: RequestContext['req'],
   res: RequestContext['res'],
   url: RequestContext['url'],
+  isDynamicPrefetch: RequestContext['isDynamicPrefetch'],
   rootParams: Params,
   implicitTags: RequestContext['implicitTags'],
   onUpdateCookies: RenderOpts['onUpdateCookies'],
@@ -122,6 +124,7 @@ export function createRequestStoreForRender(
     req,
     res,
     url,
+    isDynamicPrefetch,
     rootParams,
     implicitTags,
     onUpdateCookies,
@@ -145,6 +148,7 @@ export function createRequestStoreForAPI(
     req,
     undefined,
     url,
+    false,
     {},
     implicitTags,
     onUpdateCookies,
@@ -160,6 +164,7 @@ function createRequestStoreImpl(
   req: RequestContext['req'],
   res: RequestContext['res'],
   url: RequestContext['url'],
+  isDynamicPrefetch: RequestContext['isDynamicPrefetch'],
   rootParams: Params,
   implicitTags: RequestContext['implicitTags'],
   onUpdateCookies: RenderOpts['onUpdateCookies'],
@@ -185,6 +190,7 @@ function createRequestStoreImpl(
   return {
     type: 'request',
     phase,
+    isDynamicPrefetch,
     implicitTags,
     // Rather than just using the whole `url` here, we pull the parts we want
     // to ensure we don't use parts of the URL that we shouldn't. This also

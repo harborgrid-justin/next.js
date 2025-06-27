@@ -159,6 +159,7 @@ export type RouteCacheEntry =
 
 export const enum FetchStrategy {
   PPR,
+  PPRDynamic,
   Full,
   LoadingBoundary,
 }
@@ -1309,8 +1310,20 @@ export async function fetchSegmentPrefetchesUsingDynamicRequest(
   // just a navigation request that happens ahead of time — it should include
   // all the same data in the response.
   if (fetchStrategy !== FetchStrategy.Full) {
-    headers[NEXT_ROUTER_PREFETCH_HEADER] = '1'
+    switch (fetchStrategy) {
+      case FetchStrategy.PPRDynamic: {
+        // In the future, this value will encode which dynamic things should be included.
+        // For now, just use something distinct from the default '1'.
+        headers[NEXT_ROUTER_PREFETCH_HEADER] = '2'
+        break
+      }
+      default: {
+        headers[NEXT_ROUTER_PREFETCH_HEADER] = '1'
+        break
+      }
+    }
   }
+
   try {
     const response = await fetchPrefetchResponse(url, headers)
     if (!response || !response.ok || !response.body) {
@@ -1346,9 +1359,14 @@ export async function fetchSegmentPrefetchesUsingDynamicRequest(
       prefetchStream
     ) as Promise<NavigationFlightResponse>)
 
-    // Since we did not set the prefetch header, the response from the server
+    // If we didn't set the prefetch header, the response from the server
     // will never contain dynamic holes.
-    const isResponsePartial = false
+    // Otherwise, assume that it might be incomplete.
+    // TODO(dynamic-ppr): signal whether or not we got a complete response
+    const isResponsePartial =
+      fetchStrategy === FetchStrategy.PPRDynamic
+        ? !!response.headers.get(NEXT_DID_POSTPONE_HEADER)
+        : fetchStrategy !== FetchStrategy.Full
 
     // Aside from writing the data into the cache, this function also returns
     // the entries that were fulfilled, so we can streamingly update their sizes

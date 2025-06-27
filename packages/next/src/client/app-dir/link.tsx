@@ -151,7 +151,7 @@ type InternalLinkProps = {
    * </Link>
    * ```
    */
-  prefetch?: boolean | 'auto' | null
+  prefetch?: boolean | 'auto' | null | 'unstable_dynamic'
 
   /**
    * (unstable) Switch to a dynamic prefetch on hover. Effectively the same as
@@ -366,7 +366,9 @@ export default function LinkComponent(
   const appPrefetchKind =
     prefetchProp === null || prefetchProp === 'auto'
       ? PrefetchKind.AUTO
-      : PrefetchKind.FULL
+      : prefetchProp === 'unstable_dynamic' // TODO(dynamic-ppr): validate that DynamicIO is enabled
+        ? PrefetchKind.DYNAMIC
+        : PrefetchKind.FULL
 
   if (process.env.NODE_ENV !== 'production') {
     function createPropError(args: {
@@ -469,11 +471,12 @@ export default function LinkComponent(
         if (
           props[key] != null &&
           valType !== 'boolean' &&
-          props[key] !== 'auto'
+          props[key] !== 'auto' &&
+          props[key] !== 'unstable_dynamic'
         ) {
           throw createPropError({
             key,
-            expected: '`boolean | "auto"`',
+            expected: '`boolean | "auto" | "unstable_dynamic"`',
             actual: valType,
           })
         }

@@ -1,7 +1,7 @@
 import type { FlightRouterState } from '../../../server/app-render/types'
 import { createPrefetchURL } from '../app-router'
 import { createCacheKey } from './cache-key'
-import { schedulePrefetchTask } from './scheduler'
+import { schedulePrefetchTask, type IncludeDynamicData } from './scheduler'
 import { PrefetchPriority } from '../segment-cache'
 
 /**
@@ -28,7 +28,7 @@ export function prefetch(
   href: string,
   nextUrl: string | null,
   treeAtTimeOfPrefetch: FlightRouterState,
-  includeDynamicData: boolean,
+  includeDynamicData: IncludeDynamicData,
   onInvalidate: null | (() => void)
 ) {
   const url = createPrefetchURL(href)

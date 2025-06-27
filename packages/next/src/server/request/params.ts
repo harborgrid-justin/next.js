@@ -107,7 +107,17 @@ export function createServerParamsForServerSegment(
   const workUnitStore = workUnitAsyncStorage.getStore()
   if (workUnitStore) {
     switch (workUnitStore.type) {
-      case 'prerender':
+      case 'prerender': {
+        if (workUnitStore.allowedDynamicApis?.params) {
+          return createRenderParams(underlyingParams, workStore)
+        } else {
+          return createPrerenderParams(
+            underlyingParams,
+            workStore,
+            workUnitStore
+          )
+        }
+      }
       case 'prerender-client':
       case 'prerender-ppr':
       case 'prerender-legacy':

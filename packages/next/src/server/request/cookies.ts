@@ -92,13 +92,20 @@ export function cookies(): Promise<ReadonlyRequestCookies> {
     if (workUnitStore) {
       switch (workUnitStore.type) {
         case 'prerender':
-          // dynamicIO Prerender
-          // We don't track dynamic access here because access will be tracked when you access
-          // one of the properties of the cookies object.
-          return makeDynamicallyTrackedExoticCookies(
-            workStore.route,
-            workUnitStore
-          )
+          if (workUnitStore.allowedDynamicApis?.cookies) {
+            // a dynamic prefetch that allows cookies
+            return makeUntrackedExoticCookies(
+              workUnitStore.allowedDynamicApis.cookies
+            )
+          } else {
+            // dynamicIO Prerender
+            // We don't track dynamic access here because access will be tracked when you access
+            // one of the properties of the cookies object.
+            return makeDynamicallyTrackedExoticCookies(
+              workStore.route,
+              workUnitStore
+            )
+          }
         case 'prerender-client':
           const exportName = '`cookies`'
           throw new InvariantError(

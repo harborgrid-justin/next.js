@@ -46,6 +46,10 @@ export interface RequestStore extends CommonWorkUnitStore {
     readonly search: string
   }
 
+  // Note: this will change from a boolean to something indicating which dynamic APIs are allowed
+  // (based on data gathered from prefetch sentinels during build)
+  readonly isDynamicPrefetch: boolean
+
   readonly headers: ReadonlyHeaders
   // This is mutable because we need to reassign it when transitioning from the action phase to the render phase.
   // The cookie object itself is deliberately read only and thus can't be updated.
@@ -66,6 +70,15 @@ export interface RequestStore extends CommonWorkUnitStore {
   // DEV-only
   usedDynamic?: boolean
   prerenderPhase?: boolean
+}
+
+export type PrerenderDynamicApis = {
+  /** Indicates whether `params` can be accessed in a dynamic prefetch. */
+  params: boolean
+  /** Indicates whether `params` can be accessed in a dynamic prefetch. */
+  searchParams: boolean
+  readonly cookies: ReadonlyRequestCookies | null
+  readonly draftMode: DraftModeProvider | null
 }
 
 /**
@@ -108,6 +121,8 @@ export interface PrerenderStoreModern extends CommonWorkUnitStore {
   readonly dynamicTracking: null | DynamicTrackingState
 
   readonly rootParams: Params
+
+  readonly allowedDynamicApis: PrerenderDynamicApis | null
 
   /**
    * When true, the page is prerendered as a fallback shell, while allowing any
