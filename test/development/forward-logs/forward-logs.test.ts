@@ -477,49 +477,33 @@ describe(`Terminal Logging (${bundlerName})`, () => {
       logs = []
     })
 
-    it(`should respect edge limit for arrays (${bundlerName})`, async () => {
+    it(`should respect custom edge limit for arrays (${bundlerName})`, async () => {
       const browser = await webdriver(next.url, '/edge-limit')
 
       await browser.waitForElementByCss('#large-array-button')
       await browser.elementByCss('#large-array-button').click()
 
       await retry(() => {
-        const logOutput = logs.join('\n')
-        const terminalLogsFromBrowser = logOutput
-          .split('\n')
-          .filter((line) => line.includes('[browser]'))
-          .join('\n')
-
-        expect(terminalLogsFromBrowser).toContain('[browser]')
-        expect(terminalLogsFromBrowser).toContain('Large array:')
-        expect(logOutput).toMatch(/items not stringified/)
-        expect(terminalLogsFromBrowser).toContain('item0')
-        expect(terminalLogsFromBrowser).not.toContain('item10')
-        expect(terminalLogsFromBrowser).not.toContain('item100')
+        const logOutput = logs.join('')
+        expect(logOutput).toContain('[browser]')
+        expect(logOutput).toContain('Large array:')
+        expect(logOutput).toContain('... 139 items not stringified')
       })
 
       await browser.close()
     })
 
-    it(`should respect edge limit for objects (${bundlerName})`, async () => {
+    it(`should respect custom edge limit for objects (${bundlerName})`, async () => {
       const browser = await webdriver(next.url, '/edge-limit')
 
       await browser.waitForElementByCss('#large-object-button')
       await browser.elementByCss('#large-object-button').click()
 
       await retry(() => {
-        const logOutput = logs.join('\n')
-        const terminalLogsFromBrowser = logOutput
-          .split('\n')
-          .filter((line) => line.includes('[browser]'))
-          .join('\n')
-
-        expect(terminalLogsFromBrowser).toContain('[browser]')
-        expect(terminalLogsFromBrowser).toContain('Large object:')
-        expect(logOutput).toMatch(/items not stringified/)
-        expect(terminalLogsFromBrowser).toContain('prop0')
-        expect(terminalLogsFromBrowser).not.toContain('prop50')
-        expect(terminalLogsFromBrowser).not.toContain('prop100')
+        const logOutput = logs.join('')
+        expect(logOutput).toContain('[browser]')
+        expect(logOutput).toContain('Large object:')
+        expect(logOutput).toContain('140 items not stringified')
       })
 
       await browser.close()
