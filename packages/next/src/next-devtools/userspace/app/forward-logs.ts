@@ -317,7 +317,7 @@ const isHMR = (args: any[]) => {
   if (firstArg.startsWith('[HMR]')) {
     return true
   }
-  // todo: handle al values for pages/webpack
+  // todo: handle all values for pages/webpack, maybe source of truth?
 
   return false
 }

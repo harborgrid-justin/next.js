@@ -113,8 +113,6 @@ function onUnhandledRejection(ev: PromiseRejectionEvent) {
 }
 
 export function register() {
-  console.log('registering pages')
-
   if (isRegistered) {
     return
   }
@@ -126,7 +124,6 @@ export function register() {
 
   console.log('patching logs on pages side')
 
-  // Only initialize browser logs forwarding if enabled
   if (isTerminalLoggingEnabled()) {
     patchLogs('pages')
   }

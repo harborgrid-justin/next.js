@@ -71,11 +71,8 @@ window.__nextDevClientId = Math.round(Math.random() * 100 + Date.now())
 let customHmrEventHandler: any
 let turbopackMessageListeners: ((msg: TurbopackMsgToBrowser) => void)[] = []
 export default function connect() {
-  console.log('connecting via pages')
-
   register()
 
-  
   addMessageListener((payload) => {
     if (!('action' in payload)) {
       return
