@@ -1,19 +1,58 @@
 // import { configure } from './safe-stable-serialize'
 
 import { configure } from 'next/dist/compiled/safe-stable-stringify'
-
+import {
+  getOwnerStack,
+  setOwnerStackIfAvailable,
+} from './errors/stitched-error'
+import { getErrorSource } from '../../../shared/lib/error-source'
 import type {
   ConsoleEntry,
   ConsoleErrorEntry,
   FormattedErrorEntry,
   LogEntry,
-  LogLevel,
-} from './shared'
-import {
-  getOwnerStack,
-  setOwnerStackIfAvailable,
-} from '../errors/stitched-error'
-import { getErrorSource } from '../../../../shared/lib/error-source'
+  LogMethod,
+} from '../../shared/forward-logs-types'
+
+const PROMISE_MARKER = 'Promise {}'
+const UNAVAILABLE_MARKER = '[Unable to view]'
+
+function safeClone<T>(value: T, seen = new WeakMap()): any {
+  if (value === undefined) return UNDEFINED_MARKER
+  if (value === null || typeof value !== 'object') return value
+  if (seen.has(value as object)) return seen.get(value as object)
+  if (typeof (value as any)?.then === 'function') return PROMISE_MARKER
+
+  if (Array.isArray(value)) {
+    const out: any[] = []
+    seen.set(value, out)
+    for (const item of value) {
+      try {
+        out.push(safeClone(item, seen))
+      } catch {
+        out.push(UNAVAILABLE_MARKER)
+      }
+    }
+    return out
+  }
+
+  const proto = Object.getPrototypeOf(value)
+  if (proto === Object.prototype || proto === null) {
+    const out: Record<string, unknown> = {}
+    seen.set(value as object, out)
+    for (const key of Object.keys(value as object)) {
+      try {
+        out[key] = safeClone((value as any)[key], seen)
+      } catch {
+        out[key] = UNAVAILABLE_MARKER
+      }
+    }
+    return out
+  }
+
+  return Object.prototype.toString.call(value)
+}
+
 const UNDEFINED_MARKER = '__next_tagged_undefined'
 const replacer = (_k: string, v: unknown) => {
   return v === undefined ? UNDEFINED_MARKER : v
@@ -22,14 +61,23 @@ const replacer = (_k: string, v: unknown) => {
 const stringify = configure({ maximumDepth: Number.MAX_SAFE_INTEGER }) // todo: allow user to config
 // ternary since stringify(undefined) wont be handled by the replacer
 const logStringify = (data: unknown) => {
+  // try {
+  // return data === undefined ? UNDEFINED_MARKER : stringify(data, replacer)
   try {
-    return data === undefined ? UNDEFINED_MARKER : stringify(data, replacer)
+   return stringify(safeClone(data))
   } catch {
-    return '[unable to serialize]'
+    // todo document: what safe stable stringify logs on failure
+    return '[unable to serialize, circular reference is too complex to analyze]'
   }
+  // } catch {
+  //   // i wish safe stable stringify handled this at a granular level, but not much we can do
+  //   // this is what will be shown to user
+  //   return '[unable to access data]'
+  // }
 }
 
 let isPatched = false
+let restoreFunctions: Array<() => void> = []
 
 export const logQueue: {
   entries: Array<LogEntry>
@@ -122,20 +170,15 @@ const createErrorArg = (error: Error) => {
   }
 }
 
-const createLogEntry = (level: LogLevel, args: any[]) => {
+const createLogEntry = (level: LogMethod, args: any[]) => {
   // do not abstract this, it implicitly relies on which functions call it. forcing the inlined implementation makes you think about callers
   const stack = stackWithOwners(new Error())
   const stackLines = stack?.split('\n')
-  // @ts-expect-error
-  window._logstuff = window._logstuff ?? []
-  // @ts-expect-error
-  window._logstuff.push(stack)
-
   const cleanStack = stackLines?.slice(2).join('\n')
   const entry: ConsoleEntry = {
     kind: 'console',
-    consoleLogStack: cleanStack ?? null, // depending on browser we might not have stack
-    level,
+    consoleMethodStack: cleanStack ?? null, // depending on browser we might not have stack
+    method: level,
     args: args.map((arg) => {
       if (arg instanceof Error) {
         return createErrorArg(arg)
@@ -166,7 +209,7 @@ export const forwardErrorLog = (args: any[]) => {
 
   const entry: ConsoleErrorEntry = {
     kind: 'console-error',
-    level: 'error',
+    method: 'error',
     consoleErrorStack: cleanStack ?? '',
     args: args.map((arg) => {
       if (arg instanceof Error) {
@@ -191,13 +234,8 @@ const createUncaughtErrorEntry = (
     kind: 'formatted-error',
     prefix: `Uncaught ${errorName}: ${errorMessage}`,
     stack: fullStack,
-    level: 'error',
+    method: 'error',
   }
-
-  // @ts-expect-error
-  window._logstuff = window._logstuff ?? []
-  // @ts-expect-error
-  window._logstuff.push(entry)
 
   logQueue.scheduleLogSend(entry)
 }
@@ -230,7 +268,7 @@ const createUnhandledRejectionErrorEntry = (
     kind: 'formatted-error',
     prefix: `⨯ unhandledRejection: ${error.name}: ${error.message}`,
     stack: fullStack,
-    level: 'error',
+    method: 'error',
   }
 
   logQueue.scheduleLogSend(entry)
@@ -241,7 +279,7 @@ const createUnhandledRejectionNonErrorEntry = (reason: unknown) => {
     kind: 'console-error',
     // we can't access the stack since the event is dispatched async and creating an inline error would be meaningless
     consoleErrorStack: '',
-    level: 'error',
+    method: 'error',
     args: [
       {
         kind: 'arg',
@@ -274,33 +312,51 @@ const isHMR = (args: any[]) => {
 
   return false
 }
-const createConsoleMethod = (
-  level: LogLevel,
-  original: (...args: any[]) => void
-) => {
-  return (...args: any[]) => {
-    // we already have HMR logs on server, so information is redundant
-    if (isHMR(args)) {
-      original(...args)
-      return
+
+// Based on https://github.com/facebook/react/blob/28dc0776be2e1370fe217549d32aee2519f0cf05/packages/react-server/src/ReactFlightServer.js#L248
+function patchConsoleMethod(methodName: LogMethod): () => void {
+  const descriptor = Object.getOwnPropertyDescriptor(console, methodName)
+  if (
+    descriptor &&
+    (descriptor.configurable || descriptor.writable) &&
+    typeof descriptor.value === 'function'
+  ) {
+    const originalMethod = descriptor.value
+    const originalName = Object.getOwnPropertyDescriptor(originalMethod, 'name')
+    const wrapperMethod = function (
+      this: typeof console,
+      ...args: Parameters<(typeof console)[LogMethod]>
+    ) {
+      try {
+        // we already have HMR logs on server, so information is redundant
+        if (isHMR(args)) {
+          originalMethod.apply(this, args)
+          return
+        }
+        createLogEntry(methodName, args)
+        originalMethod.apply(this, args)
+      } catch {
+        originalMethod.apply(this, args)
+      }
     }
-    createLogEntry(level, args)
-    original(...args)
+    if (originalName) {
+      Object.defineProperty(wrapperMethod, 'name', originalName)
+    }
+    Object.defineProperty(console, methodName, {
+      value: wrapperMethod,
+    })
+
+    return () => {
+      Object.defineProperty(console, methodName, {
+        value: originalMethod,
+        writable: descriptor.writable,
+        configurable: descriptor.configurable,
+      })
+    }
   }
+
+  return () => {}
 }
-//  return (...args: any[]) => {
-//     try {
-//       // we already have HMR logs on server, so information is redundant
-//       if (isHMR(args)) {
-//         original(...args)
-//         return
-//       }
-//       createLogEntry(level, args)
-//       original(...args)
-//     } catch {
-//       original(...args)
-//     }
-//   }
 
 export function forwardUnhandledError(error: Error) {
   createUncaughtErrorEntry(error.name, error.message, stackWithOwners(error))
@@ -308,13 +364,12 @@ export function forwardUnhandledError(error: Error) {
 
 // todo: this router check is brittle, we need to update based on the current router the user is using
 export const patchLogs = (router: 'app' | 'pages'): void => {
-  // do we need this?
+  // probably don't need this
   if (isPatched) {
-    // ah we may need tear down? wait no we don't
     return
   }
 
-  const levels: Array<LogLevel> = [
+  const levels: Array<LogMethod> = [
     'log',
     'info',
     'warn',
@@ -330,13 +385,18 @@ export const patchLogs = (router: 'app' | 'pages'): void => {
     'trace',
   ]
 
-  levels.forEach((level) => {
-    ;(console as any)[level] = createConsoleMethod(
-      level,
-      (console as any)[level]
-    )
-  })
+  restoreFunctions = levels.map((level) => patchConsoleMethod(level))
 
   logQueue.router = router
   isPatched = true
+}
+
+export const unpatchLogs = (): void => {
+  if (!isPatched) {
+    return
+  }
+
+  restoreFunctions.forEach((restore) => restore())
+  restoreFunctions = []
+  isPatched = false
 }

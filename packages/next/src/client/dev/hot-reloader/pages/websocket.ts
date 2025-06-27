@@ -1,4 +1,4 @@
-import { logQueue } from '../../../../next-devtools/userspace/app/term-logs/client'
+import { logQueue } from '../../../../next-devtools/userspace/app/forward-logs'
 import {
   HMR_ACTIONS_SENT_TO_BROWSER,
   type HMR_ACTION_TYPES,

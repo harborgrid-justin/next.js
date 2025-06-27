@@ -1,47 +1,38 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef } from 'react'
 import { GlobalLayoutRouterContext } from '../../../../shared/lib/app-router-context.shared-runtime'
 import { getSocketUrl } from '../get-socket-url'
 import type { TurbopackMsgToBrowser } from '../../../../server/dev/hot-reloader-types'
 
 export function useWebsocket(assetPrefix: string) {
-  // const webSocketRef = useRef<WebSocket>(undefined)
-  const [webSocket, setWebSocket] = useState<WebSocket | null>(null)
-  const didConnect = useRef(false)
+  const webSocketRef = useRef<WebSocket>(undefined)
 
-  // is this to avoid multiple connects because of strict mode? very odd because this is a bug internally, i don't like that
   useEffect(() => {
-    if (didConnect.current) {
+    if (webSocketRef.current) {
       return
     }
 
-    // why are we putting the socket in a ref?
     const url = getSocketUrl(assetPrefix)
-    const socket = new window.WebSocket(`${url}/_next/webpack-hmr`)
-    didConnect.current = true
-    setWebSocket(socket)
 
-    /**
-     * this is a speculative comment, was that the intention of storing the socket in a ref before?
-     */
-    // we should cleanup, but we don't want to open another socket, and since we guard with a ref and expect this to run once, its fine
+    webSocketRef.current = new window.WebSocket(`${url}/_next/webpack-hmr`)
   }, [assetPrefix])
 
-  return webSocket
+  return webSocketRef
 }
-export function useSendMessage(socket: WebSocket | null) {
+
+export function useSendMessage(webSocketRef: ReturnType<typeof useWebsocket>) {
   const sendMessage = useCallback(
     (data: string) => {
+      const socket = webSocketRef.current
       if (!socket || socket.readyState !== socket.OPEN) {
         return
       }
       return socket.send(data)
     },
-    [socket]
+    [webSocketRef]
   )
   return sendMessage
 }
 
-// mark turbo
 export function useTurbopack(
   sendMessage: ReturnType<typeof useSendMessage>,
   onUpdateError: (err: unknown) => void
@@ -79,9 +70,6 @@ export function useTurbopack(
       '@vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts'
     ).then(({ connect }) => {
       const { current } = turbopackState
-
-      // console.log('connecting to turbo pack')
-
       connect({
         addMessageListener(cb: (msg: TurbopackMsgToBrowser) => void) {
           current.callback = cb
@@ -101,8 +89,10 @@ export function useTurbopack(
   return processTurbopackMessage
 }
 
-export function useWebsocketPing(socket: WebSocket | null) {
-  const sendMessage = useSendMessage(socket)
+export function useWebsocketPing(
+  websocketRef: ReturnType<typeof useWebsocket>
+) {
+  const sendMessage = useSendMessage(websocketRef)
   const { tree } = useContext(GlobalLayoutRouterContext)
 
   useEffect(() => {

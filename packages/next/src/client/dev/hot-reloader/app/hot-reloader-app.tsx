@@ -454,15 +454,13 @@ export default function HotReload({
   children: ReactNode
   globalError: GlobalErrorState
 }) {
-
-  // oh something something
   useErrorHandler(dispatcher.onUnhandledError, dispatcher.onUnhandledRejection)
 
-  const socket = useWebsocket(assetPrefix)
+  const webSocketRef = useWebsocket(assetPrefix)
 
-  useWebsocketPing(socket)
-  const sendMessage = useSendMessage(socket)
-  useForwardConsoleLog(socket)
+  useWebsocketPing(webSocketRef)
+  const sendMessage = useSendMessage(webSocketRef)
+  useForwardConsoleLog(webSocketRef)
   const processTurbopackMessage = useTurbopack(sendMessage, (err) =>
     performFullReload(err, sendMessage)
   )
@@ -510,8 +508,8 @@ export default function HotReload({
   }
 
   useEffect(() => {
-    // this is a bug
-    if (!socket) return
+    const websocket = webSocketRef.current
+    if (!websocket) return
 
     const handler = (event: MessageEvent<any>) => {
       try {
@@ -529,10 +527,15 @@ export default function HotReload({
       }
     }
 
-    socket.addEventListener('message', handler)
-    return () => socket.removeEventListener('message', handler)
-  }, [sendMessage, router, socket, processTurbopackMessage, appIsrManifestRef])
-
+    websocket.addEventListener('message', handler)
+    return () => websocket.removeEventListener('message', handler)
+  }, [
+    sendMessage,
+    router,
+    webSocketRef,
+    processTurbopackMessage,
+    appIsrManifestRef,
+  ])
   return (
     <AppDevOverlayErrorBoundary globalError={globalError}>
       <ReplaySsrOnlyErrors onBlockingError={dispatcher.openErrorOverlay} />

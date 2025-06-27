@@ -1,11 +1,24 @@
 // wtf is the point of this file
 // not actually shared fire
-export type LogLevel = 'log' | 'info' | 'warn' | 'debug' | 'table' | 'error' | 'assert' | 'dir' | 'dirxml' | 'group' | 'groupCollapsed' | 'groupEnd' | 'trace' | "warn"
+export type LogMethod =
+  | 'log'
+  | 'info'
+  | 'debug'
+  | 'table'
+  | 'error'
+  | 'assert'
+  | 'dir'
+  | 'dirxml'
+  | 'group'
+  | 'groupCollapsed'
+  | 'groupEnd'
+  | 'trace'
+  | 'warn'
 
 export type ConsoleEntry = {
   kind: 'console'
-  level: LogLevel
-  consoleLogStack: string| null // fix name
+  method: LogMethod
+  consoleMethodStack: string | null // fix name
   args: Array<
     | {
         kind: 'arg'
@@ -20,8 +33,8 @@ export type ConsoleEntry = {
 }
 
 export type ConsoleErrorEntry = {
-  kind: 'console-error',
-  level: 'error',
+  kind: 'console-error'
+  method: 'error'
   consoleErrorStack: string
   args: Array<
     | {
@@ -37,13 +50,11 @@ export type ConsoleErrorEntry = {
   >
 }
 
-
-
 export type FormattedErrorEntry = {
   kind: 'formatted-error'
   prefix: string
   stack: string
-  level: 'error'
+  method: 'error'
 }
 
-export type LogEntry = ConsoleEntry |ConsoleErrorEntry |FormattedErrorEntry
+export type LogEntry = ConsoleEntry | ConsoleErrorEntry | FormattedErrorEntry

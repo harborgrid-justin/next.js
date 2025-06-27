@@ -189,7 +189,7 @@ export async function createOriginalStackFrame({
   frame: StackFrame
   errorMessage?: string
 }): Promise<{
-  originalStackFrame: (StackFrame & { ignored: boolean })
+  originalStackFrame: StackFrame & { ignored: boolean }
   originalCodeFrame?: string | null
 } | null> {
   const moduleNotFound = findModuleNotFoundFromError(errorMessage)
@@ -379,31 +379,30 @@ export function getOriginalStackFrames({
   rootDirectory: string
 }): Promise<OriginalStackFramesResponse> {
   return Promise.all(
-    frames.map(
-      (frame) =>
-        getOriginalStackFrame({
-          isServer,
-          isEdgeServer,
-          isAppDirectory,
-          frame,
-          clientStats,
-          serverStats,
-          edgeServerStats,
-          rootDirectory,
-        }).then(
-          (value) => {
-            return {
-              status: 'fulfilled' as const,
-              value,
-            }
-          },
-          (reason) => {
-            return {
-              status: 'rejected' as const,
-              reason: inspect(reason, { colors: false }),
-            }
+    frames.map((frame) =>
+      getOriginalStackFrame({
+        isServer,
+        isEdgeServer,
+        isAppDirectory,
+        frame,
+        clientStats,
+        serverStats,
+        edgeServerStats,
+        rootDirectory,
+      }).then(
+        (value) => {
+          return {
+            status: 'fulfilled' as const,
+            value,
           }
-        )
+        },
+        (reason) => {
+          return {
+            status: 'rejected' as const,
+            reason: inspect(reason, { colors: false }),
+          }
+        }
+      )
     )
   )
 }
@@ -427,7 +426,7 @@ async function getOriginalStackFrame({
   edgeServerStats: () => webpack.Stats | null
   rootDirectory: string
 }): Promise<{
-  originalStackFrame: (StackFrame & { ignored: boolean }) 
+  originalStackFrame: StackFrame & { ignored: boolean }
   originalCodeFrame?: string | null
 }> {
   const filename = frame.file ?? ''

@@ -15,7 +15,7 @@ import {
   forwardUnhandledError,
   logUnhandledRejection,
   forwardErrorLog,
-} from '../app/term-logs/client'
+} from '../app/forward-logs'
 
 const usePagesDevOverlayBridge = () => {
   React.useInsertionEffect(() => {
