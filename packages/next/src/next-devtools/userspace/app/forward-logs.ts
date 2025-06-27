@@ -101,6 +101,21 @@ export const logStringify = (data: unknown): string => {
   }
 }
 
+const afterThisFrame = (cb: () => void) => {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+
+  const rafId = requestAnimationFrame(() => {
+    timeout = setTimeout(() => {
+      cb()
+    })
+  })
+
+  return () => {
+    cancelAnimationFrame(rafId)
+    clearTimeout(timeout)
+  }
+}
+
 let isPatched = false
 
 export const logQueue: {
@@ -108,14 +123,14 @@ export const logQueue: {
   onSocketReady: (socket: WebSocket) => void
   flushScheduled: boolean
   socket: WebSocket | null
-  timer: ReturnType<typeof setTimeout> | undefined
+  cancelFlush: (() => void) | null
   sourceType?: 'server' | 'edge-server'
   router: 'app' | 'pages' | null
   scheduleLogSend: (entry: LogEntry) => void
 } = {
   entries: [],
   flushScheduled: false,
-  timer: undefined,
+  cancelFlush: null,
   socket: null,
   sourceType: undefined,
   router: null,
@@ -132,8 +147,8 @@ export const logQueue: {
 
     logQueue.flushScheduled = true
 
-    // non blocking log flush, setTimeout runs at most once per frame
-    logQueue.timer = setTimeout(() => {
+    // non blocking log flush, runs at most once per frame
+    logQueue.cancelFlush = afterThisFrame(() => {
       logQueue.flushScheduled = false
 
       // just incase
@@ -163,7 +178,7 @@ export const logQueue: {
     }
 
     // incase an existing timeout was going to run with a stale socket
-    clearTimeout(logQueue.timer)
+    logQueue.cancelFlush?.()
     logQueue.socket = socket
     try {
       const payload = JSON.stringify({
