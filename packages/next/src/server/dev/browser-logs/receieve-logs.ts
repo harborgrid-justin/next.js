@@ -248,7 +248,6 @@ async function handleDir(
     const location = dim(`(${getConsoleLocation(mapped)})`)
     const originalWrite = process.stdout.write.bind(process.stdout)
     let captured = ''
-    // intercept stdout to prepend prefix later
     process.stdout.write = (chunk) => {
       captured += chunk
       return true

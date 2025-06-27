@@ -141,7 +141,7 @@ async function getSourceMappedStackFramesInternal(
         }
 
         const { originalStackFrame, originalCodeFrame } = result.value
-        // chrome-extension://fmkadmapgofadopljbjfkapdkoienihi/build/installHook.js:1:137709 we should ignore this, why aren't we, are we are and im missing something
+        // chrome-extension://<...> we should ignore this, why aren't we, are we are and im missing something
         if (originalStackFrame?.ignored && ignore) {
           return {
             kind: 'ignored' as const,
