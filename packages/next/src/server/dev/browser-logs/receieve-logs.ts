@@ -113,15 +113,13 @@ const colorError = (
   mapped satisfies never
 }
 
-// --- Argument preparation helpers ---
-function prepareFormattedErrorArgs(
+async function prepareFormattedErrorArgs(
   entry: Extract<LogEntry, { kind: 'formatted-error' }>,
   ctx: MappingContext,
   distDir: string
 ) {
-  return getSourceMappedStackFrames(entry.stack, ctx, distDir).then(
-    (mapped) => [colorError(mapped, { prefix: entry.prefix })]
-  )
+  const mapped = await getSourceMappedStackFrames(entry.stack, ctx, distDir)
+  return [colorError(mapped, { prefix: entry.prefix })]
 }
 
 async function prepareConsoleArgs(
@@ -317,11 +315,13 @@ export async function handleLog(
           }
           break
         }
+        // any logged errors are anything that are logged as "red" in the browser but aren't only an Error (console.error, Promise.reject(100))
         case 'any-logged-error': {
           const consoleArgs = await prepareConsoleErrorArgs(entry, ctx, distDir)
           forwardConsole.error(browserPrefix, ...consoleArgs)
           break
         }
+        // formatted error is an explicit error event (rejections, uncaught errors)
         case 'formatted-error': {
           const formattedArgs = await prepareFormattedErrorArgs(
             entry,
