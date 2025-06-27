@@ -747,7 +747,7 @@ export interface ExperimentalConfig {
   devtoolNewPanelUI?: boolean
 
   /**
-   *
+   * Enable debug information to be forwarded from browser to dev server stdout/stderr
    */
   browserDebugInfoInTerminal?:
     | boolean
