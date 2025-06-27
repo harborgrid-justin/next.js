@@ -188,10 +188,7 @@ export async function createOriginalStackFrame({
   rootDirectory: string
   frame: StackFrame
   errorMessage?: string
-}): Promise<{
-  originalStackFrame: StackFrame & { ignored: boolean }
-  originalCodeFrame?: string | null
-} | null> {
+}): Promise<OriginalStackFrameResponse | null> {
   const moduleNotFound = findModuleNotFoundFromError(errorMessage)
   const result = await (() => {
     if (moduleNotFound) {
@@ -425,10 +422,7 @@ async function getOriginalStackFrame({
   serverStats: () => webpack.Stats | null
   edgeServerStats: () => webpack.Stats | null
   rootDirectory: string
-}): Promise<{
-  originalStackFrame: StackFrame & { ignored: boolean }
-  originalCodeFrame?: string | null
-}> {
+}): Promise<OriginalStackFrameResponse> {
   const filename = frame.file ?? ''
   const source = await getSource(filename, {
     getCompilations: () => {
