@@ -2,7 +2,6 @@ import { patchConsoleError } from './errors/intercept-console-error'
 import { handleGlobalErrors } from './errors/use-error-handler'
 import { initializeDebugLogForwarding } from './forward-logs'
 import { isTerminalLoggingEnabled } from './terminal-logging-config'
-console.log('patching')
 
 handleGlobalErrors()
 patchConsoleError()
