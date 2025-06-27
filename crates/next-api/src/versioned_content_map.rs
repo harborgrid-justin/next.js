@@ -234,7 +234,7 @@ impl VersionedContentMap {
         Ok(Vc::cell(keys))
     }
 
-    #[turbo_tasks::function(not_immutable)]
+    #[turbo_tasks::function]
     fn raw_get(&self, path: ResolvedVc<FileSystemPath>) -> Vc<OptionMapEntry> {
         let assets = {
             let map = &self.map_path_to_op.get().0;

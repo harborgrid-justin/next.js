@@ -9,12 +9,9 @@ use turbo_tasks_macros_shared::{
     get_trait_type_ident, get_trait_type_vtable_registry, is_self_used,
 };
 
-use crate::{
-    func::{
-        DefinitionContext, FunctionArguments, NativeFn, TurboFn, filter_inline_attributes,
-        split_function_attributes,
-    },
-    function_macro::is_immutable,
+use crate::func::{
+    DefinitionContext, FunctionArguments, NativeFn, TurboFn, filter_inline_attributes,
+    split_function_attributes,
 };
 
 pub fn value_trait(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -194,7 +191,6 @@ pub fn value_trait(args: TokenStream, input: TokenStream) -> TokenStream {
                 //   argument. (This could be fixed)
                 // - This only makes sense when a default implementation is present.
                 local: false,
-                immutable: is_immutable(sig) && func_args.not_immutable.is_none(),
             };
 
             let native_function_ident = get_trait_default_impl_function_ident(trait_ident, ident);
