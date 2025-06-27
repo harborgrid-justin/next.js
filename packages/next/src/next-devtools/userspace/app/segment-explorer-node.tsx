@@ -64,7 +64,9 @@ export function SegmentViewStateNode({ page }: { page: string }) {
     }
     dispatcher.segmentExplorerUpdateRouteState(state)
     return () => {
-      dispatcher.segmentExplorerUpdateRouteState(state)
+      dispatcher.segmentExplorerUpdateRouteState({
+        page: '',
+      })
     }
   }, [page])
   return null

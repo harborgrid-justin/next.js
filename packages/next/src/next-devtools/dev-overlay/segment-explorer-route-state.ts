@@ -8,8 +8,16 @@ const routeState = {
     routeState.state = state
   },
 }
+
+function markUpdated() {
+  for (const listener of listeners) {
+    listener()
+  }
+}
+
 export const updateRouteState = (state: { page: string }) => {
   routeState.setState(state)
+  markUpdated()
 }
 
 const listeners = new Set<() => void>()
