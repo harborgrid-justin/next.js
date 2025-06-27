@@ -147,6 +147,138 @@ describe(`Terminal Logging (${bundlerName})`, () => {
 
       await browser.close()
     })
+
+    it('should handle console format strings (React Strict Mode)', async () => {
+      const browser = await webdriver(next.url, '/strict-mode')
+
+      await browser.waitForElementByCss('#format-string-button')
+      await browser.elementByCss('#format-string-button').click()
+
+      await retry(() => {
+        const logOutput = logs.join('\n')
+        const terminalLogsFromBrowser = logOutput
+          .split('\n')
+          .filter((line) => line.includes('[browser]'))
+
+        expect(
+          terminalLogsFromBrowser.some((line) => line.includes('Normal log'))
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('Dimmed log (simulated strict mode)')
+          )
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('Multiple 42 formats')
+          )
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.some((line) => line.includes('styled log'))
+        ).toBe(true)
+
+        expect(
+          terminalLogsFromBrowser.every(
+            (line) => !line.includes('[browser] %s')
+          )
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.every(
+            (line) => !line.includes('[browser] %d')
+          )
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.every(
+            (line) => !line.includes('[browser] %c')
+          )
+        ).toBe(true)
+      })
+
+      await browser.close()
+    })
+
+    it('should handle mixed console arguments correctly', async () => {
+      const browser = await webdriver(next.url, '/strict-mode')
+
+      await browser.waitForElementByCss('#mixed-args-button')
+      await browser.elementByCss('#mixed-args-button').click()
+
+      await retry(() => {
+        const logOutput = logs.join('\n')
+        const terminalLogsFromBrowser = logOutput
+          .split('\n')
+          .filter((line) => line.includes('[browser]'))
+
+        expect(
+          terminalLogsFromBrowser.some((line) => line.includes('String format'))
+        ).toBe(true)
+
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('No format string')
+          )
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('but multiple args')
+          )
+        ).toBe(true)
+
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('5 items processed')
+          )
+        ).toBe(true)
+
+        expect(
+          terminalLogsFromBrowser.every(
+            (line) =>
+              !line.includes('[browser] %s') && !line.includes('[browser] %d')
+          )
+        ).toBe(true)
+      })
+
+      await browser.close()
+    })
+
+    it('should handle format strings in console.error and console.warn', async () => {
+      const browser = await webdriver(next.url, '/strict-mode')
+
+      await browser.waitForElementByCss('#error-format-button')
+      await browser.elementByCss('#error-format-button').click()
+
+      await retry(() => {
+        const logOutput = logs.join('\n')
+        const terminalLogsFromBrowser = logOutput
+          .split('\n')
+          .filter((line) => line.includes('[browser]'))
+
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('Error with format string')
+          )
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('Warning with 123')
+          )
+        ).toBe(true)
+        expect(
+          terminalLogsFromBrowser.some((line) =>
+            line.includes('Normal error without format')
+          )
+        ).toBe(true)
+
+        expect(
+          terminalLogsFromBrowser.every(
+            (line) =>
+              !line.includes('[browser] %s') && !line.includes('[browser] %d')
+          )
+        ).toBe(true)
+      })
+
+      await browser.close()
+    })
   })
 
   describe('when disabled (default)', () => {
