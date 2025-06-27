@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useState, createContext, useContext, use, useMemo } from 'react'
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 import { dispatcher } from 'next/dist/compiled/next-devtools'
 import { notFound } from '../../../client/components/not-found'
 
@@ -31,7 +31,9 @@ function SegmentTrieNode({
     [type, pagePath, boundaryType, setBoundaryType]
   )
 
-  useEffect(() => {
+  // Use `useLayoutEffect` to ensure the state is updated during suspense.
+  // `useEffect` won't work as the state is preserved during suspense.
+  useLayoutEffect(() => {
     dispatcher.segmentExplorerNodeAdd(nodeState)
     return () => {
       dispatcher.segmentExplorerNodeRemove(nodeState)
@@ -41,33 +43,17 @@ function SegmentTrieNode({
   return null
 }
 
-function NotFoundSegmentNode() {
-  useEffect(() => {
-    notFound()
-  }, [])
-  return null
+function NotFoundSegmentNode(): React.ReactNode {
+  notFound()
 }
 
-function ErrorSegmentNode() {
-  useEffect(() => {
-    throw new Error('NEXT_DEVTOOLS_SIMULATED_ERROR')
-  }, [])
-  return null
+function ErrorSegmentNode(): React.ReactNode {
+  throw new Error('NEXT_DEVTOOLS_SIMULATED_ERROR')
 }
 
-function LoadingSegmentNode() {
-  const [pending, setPending] = useState<Promise<void> | null>(null)
-  useEffect(() => {
-    setPending(new Promise(() => {}))
-    return () => {
-      setPending(null)
-    }
-  }, [])
-
-  if (pending) {
-    use(pending)
-  }
-
+const forever = new Promise(() => {})
+function LoadingSegmentNode(): React.ReactNode {
+  use(forever)
   return null
 }
 

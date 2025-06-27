@@ -15,7 +15,7 @@ export function SegmentBoundaryTrigger({
   ]
 
   const resetOption = {
-    label: 'Reset to Default',
+    label: 'Reset',
     value: 'reset',
     icon: <ResetIcon />,
   }
@@ -45,31 +45,42 @@ export function SegmentBoundaryTrigger({
       </button>
       <button
         className="segment-boundary-trigger-button"
-        onClick={() => setIsOpen(!isOpen)}
+        onPointerEnter={() => setIsOpen(true)}
         type="button"
       >
         <DropdownIcon />
       </button>
       {isOpen && (
-        <div className="segment-boundary-dropdown">
-          {triggerOptions.map((option) => (
+        <div
+          className="segment-boundary-dropdown-backdrop"
+          onPointerLeave={(e) => {
+            // This will only auto close for mouse leave,
+            // but preserve for touch events.
+            if (e.pointerType === 'mouse') {
+              setIsOpen(false)
+            }
+          }}
+        >
+          <div className="segment-boundary-dropdown">
+            {triggerOptions.map((option) => (
+              <div
+                key={option.value}
+                className="segment-boundary-dropdown-item"
+                onClick={() => handleSelect(option.value)}
+              >
+                {option.icon}
+                {option.label}
+              </div>
+            ))}
+            <div className="segment-boundary-dropdown-divider" />
             <div
-              key={option.value}
+              key={resetOption.value}
               className="segment-boundary-dropdown-item"
-              onClick={() => handleSelect(option.value)}
+              onClick={() => handleSelect(resetOption.value)}
             >
-              {option.icon}
-              {option.label}
+              {resetOption.icon}
+              {resetOption.label}
             </div>
-          ))}
-          <div className="segment-boundary-dropdown-divider" />
-          <div
-            key={resetOption.value}
-            className="segment-boundary-dropdown-item"
-            onClick={() => handleSelect(resetOption.value)}
-          >
-            {resetOption.icon}
-            {resetOption.label}
           </div>
         </div>
       )}
@@ -212,9 +223,10 @@ export const styles = `
     justify-content: center;
     font-weight: 500;
     color: var(--color-gray-1000);
-    background: var(--color-gray-300);
-    border: 1px solid var(--color-gray-400);
     border-radius: 6px;
+  }
+  .segment-boundary-trigger-button:hover {
+    background: var(--color-gray-400);
   }
   .segment-boundary-trigger-button--reset {
     background: none;
@@ -229,16 +241,19 @@ export const styles = `
     background: var(--color-gray-400);
   }
 
-  .segment-boundary-dropdown {
+  .segment-boundary-dropdown-backdrop {
     position: absolute;
     top: 100%;
     right: 0;
-    margin-top: 6px;
+    padding-top: 12px;
+    z-index: 3;
+  }
+
+  .segment-boundary-dropdown {
     background: var(--color-background);
     border: 1px solid var(--color-gray-400);
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
     min-width: 120px;
   }
 
@@ -271,7 +286,7 @@ export const styles = `
 
   .segment-boundary-dropdown-divider {
     height: 1px;
-    background: var(--color-gray-300);
-    margin: 4px 0;
+    background: var(--color-gray-400);
+    margin: 8px 0;
   }
 `
