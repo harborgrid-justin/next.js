@@ -13,14 +13,14 @@ export type LogMethod =
   | 'trace'
   | 'warn'
 
-export type ConsoleEntry = {
+export type ConsoleEntry<T> = {
   kind: 'console'
   method: LogMethod
   consoleMethodStack: string | null
   args: Array<
     | {
         kind: 'arg'
-        data: any
+        data: T
       }
     | {
         kind: 'formatted-error-arg'
@@ -30,14 +30,14 @@ export type ConsoleEntry = {
   >
 }
 
-export type ConsoleErrorEntry = {
+export type ConsoleErrorEntry<T> = {
   kind: 'any-logged-error'
   method: 'error'
   consoleErrorStack: string
   args: Array<
     | {
         kind: 'arg'
-        data: any
+        data: T
         isRejectionMessage?: boolean
       }
     | {
@@ -55,7 +55,14 @@ export type FormattedErrorEntry = {
   method: 'error'
 }
 
-export type LogEntry = ConsoleEntry | ConsoleErrorEntry | FormattedErrorEntry
+export type ClientLogEntry =
+  | ConsoleEntry<unknown>
+  | ConsoleErrorEntry<unknown>
+  | FormattedErrorEntry
+export type ServerLogEntry =
+  | ConsoleEntry<string>
+  | ConsoleErrorEntry<string>
+  | FormattedErrorEntry
 
 export const UNDEFINED_MARKER = '__next_tagged_undefined'
 

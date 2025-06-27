@@ -8,7 +8,7 @@ import {
   type MappingContext,
 } from './source-map'
 import {
-  type LogEntry,
+  type ServerLogEntry,
   type LogMethod,
   type ConsoleEntry,
   UNDEFINED_MARKER,
@@ -145,7 +145,7 @@ function processConsoleFormatStrings(args: any[]): any[] {
 }
 
 async function prepareFormattedErrorArgs(
-  entry: Extract<LogEntry, { kind: 'formatted-error' }>,
+  entry: Extract<ServerLogEntry, { kind: 'formatted-error' }>,
   ctx: MappingContext,
   distDir: string
 ) {
@@ -154,7 +154,7 @@ async function prepareFormattedErrorArgs(
 }
 
 async function prepareConsoleArgs(
-  entry: Extract<LogEntry, { kind: 'console' }>,
+  entry: Extract<ServerLogEntry, { kind: 'console' }>,
   ctx: MappingContext,
   distDir: string
 ) {
@@ -177,7 +177,7 @@ async function prepareConsoleArgs(
 }
 
 async function prepareConsoleErrorArgs(
-  entry: Extract<LogEntry, { kind: 'any-logged-error' }>,
+  entry: Extract<ServerLogEntry, { kind: 'any-logged-error' }>,
   ctx: MappingContext,
   distDir: string
 ) {
@@ -205,7 +205,7 @@ async function prepareConsoleErrorArgs(
 }
 
 async function handleTable(
-  entry: ConsoleEntry,
+  entry: ConsoleEntry<string>,
   browserPrefix: string,
   ctx: MappingContext,
   distDir: string
@@ -240,7 +240,7 @@ async function handleTable(
 }
 
 async function handleTrace(
-  entry: ConsoleEntry,
+  entry: ConsoleEntry<string>,
   browserPrefix: string,
   ctx: MappingContext,
   distDir: string
@@ -279,7 +279,7 @@ async function handleTrace(
 }
 
 async function handleDir(
-  entry: ConsoleEntry,
+  entry: ConsoleEntry<string>,
   browserPrefix: string,
   ctx: MappingContext,
   distDir: string
@@ -314,7 +314,7 @@ async function handleDir(
 }
 
 async function handleDefaultConsole(
-  entry: ConsoleEntry,
+  entry: ConsoleEntry<string>,
   browserPrefix: string,
   ctx: MappingContext,
   distDir: string,
@@ -335,7 +335,7 @@ async function handleDefaultConsole(
 }
 
 export async function handleLog(
-  entries: LogEntry[],
+  entries: ServerLogEntry[],
   ctx: MappingContext,
   distDir: string,
   config: boolean | { logDepth?: number; showSourceLocation?: boolean }
@@ -420,7 +420,7 @@ export async function handleLog(
 
 // the data is used later when we need to get sourcemaps for error stacks
 export async function receiveBrowserLogsWebpack(opts: {
-  entries: LogEntry[]
+  entries: ServerLogEntry[]
   router: 'app' | 'pages'
   sourceType?: 'server' | 'edge-server'
   clientStats: () => any
@@ -460,7 +460,7 @@ export async function receiveBrowserLogsWebpack(opts: {
 }
 
 export async function receiveBrowserLogsTurbopack(opts: {
-  entries: LogEntry[]
+  entries: ServerLogEntry[]
   router: 'app' | 'pages'
   sourceType?: 'server' | 'edge-server'
   project: Project

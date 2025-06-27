@@ -1,10 +1,12 @@
 import { UNDEFINED_MARKER } from '../../shared/forward-logs-shared'
 import {
   safeClone,
-  logStringify,
   PROMISE_MARKER,
   UNAVAILABLE_MARKER,
+  logStringify,
 } from './forward-logs'
+
+const safeStringify = (data: unknown) => logStringify(safeClone(data))
 
 describe('forward-logs serialization', () => {
   describe('safeClone', () => {
@@ -275,41 +277,41 @@ describe('forward-logs serialization', () => {
     })
   })
 
-  describe('logStringify', () => {
+  describe('safeStringify', () => {
     it('should stringify simple values', () => {
-      expect(logStringify(42)).toBe('42')
-      expect(logStringify('hello')).toBe('"hello"')
-      expect(logStringify(true)).toBe('true')
-      expect(logStringify(null)).toBe('null')
+      expect(safeStringify(42)).toBe('42')
+      expect(safeStringify('hello')).toBe('"hello"')
+      expect(safeStringify(true)).toBe('true')
+      expect(safeStringify(null)).toBe('null')
     })
 
     it('should handle undefined as UNDEFINED_MARKER', () => {
-      const result = logStringify(undefined)
+      const result = safeStringify(undefined)
       expect(result).toBe(`"${UNDEFINED_MARKER}"`)
     })
 
     it('should handle objects with undefined properties', () => {
       const obj = { a: 1, b: undefined }
-      const result = logStringify(obj)
+      const result = safeStringify(obj)
       expect(result).toBe(`{"a":1,"b":"${UNDEFINED_MARKER}"}`)
     })
 
     it('should handle promises as PROMISE_MARKER', () => {
       const promise = Promise.resolve(42)
-      const result = logStringify(promise)
+      const result = safeStringify(promise)
       expect(result).toBe(`"${PROMISE_MARKER}"`)
     })
 
     it('should handle circular references', () => {
       const obj: any = { a: 1 }
       obj.self = obj
-      const result = logStringify(obj)
+      const result = safeStringify(obj)
       expect(typeof result).toBe('string')
     })
 
     it('should handle arrays with problematic elements', () => {
       const arr = [1, undefined, Promise.resolve(42), 'normal']
-      const result = logStringify(arr)
+      const result = safeStringify(arr)
       expect(result).toBe(
         `[1,"${UNDEFINED_MARKER}","${PROMISE_MARKER}","normal"]`
       )
@@ -323,7 +325,7 @@ describe('forward-logs serialization', () => {
         },
       }
 
-      const result = logStringify(obj)
+      const result = safeStringify(obj)
       expect(result).toBe(
         `{"normal":"works","throwing":"${UNAVAILABLE_MARKER}"}`
       )
@@ -335,7 +337,7 @@ describe('forward-logs serialization', () => {
         deep = { level: i, nested: deep }
       }
 
-      const result = logStringify(deep)
+      const result = safeStringify(deep)
       expect(typeof result).toBe('string')
       expect(result.length).toBeGreaterThan(0)
     })
@@ -348,7 +350,7 @@ describe('forward-logs serialization', () => {
         },
       }
 
-      const result = logStringify(obj)
+      const result = safeStringify(obj)
       expect(typeof result).toBe('string')
     })
   })
@@ -356,7 +358,7 @@ describe('forward-logs serialization', () => {
   describe('edge limit handling', () => {
     it('should respect default edge limit for array elements', () => {
       const largeArray = Array.from({ length: 150 }, (_, i) => i)
-      const result = logStringify(largeArray)
+      const result = safeStringify(largeArray)
 
       expect(result).toContain('[')
       expect(result).toContain(']')
@@ -371,7 +373,7 @@ describe('forward-logs serialization', () => {
       for (let i = 0; i < 150; i++) {
         largeObject[`prop${i}`] = i
       }
-      const result = logStringify(largeObject)
+      const result = safeStringify(largeObject)
       expect(result).toContain('{')
       expect(result).toContain('}')
 
@@ -381,7 +383,7 @@ describe('forward-logs serialization', () => {
 
     it('should handle arrays within edge limit', () => {
       const smallArray = Array.from({ length: 50 }, (_, i) => i)
-      const result = logStringify(smallArray)
+      const result = safeStringify(smallArray)
       const parsed = JSON.parse(result)
       expect(parsed.length).toBe(50)
     })
@@ -394,7 +396,7 @@ describe('forward-logs serialization', () => {
         deepObj = { level: i, nested: deepObj }
       }
 
-      const result = logStringify(deepObj)
+      const result = safeStringify(deepObj)
       expect(result).toContain('level')
       expect(result).toContain('nested')
 

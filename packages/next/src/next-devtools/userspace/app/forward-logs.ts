@@ -9,7 +9,7 @@ import {
   type ConsoleEntry,
   type ConsoleErrorEntry,
   type FormattedErrorEntry,
-  type LogEntry,
+  type ClientLogEntry,
   type LogMethod,
   patchConsoleMethod,
   UNDEFINED_MARKER,
@@ -92,9 +92,10 @@ export function safeClone<T>(value: T, seen = new WeakMap()): any {
   return Object.prototype.toString.call(value)
 }
 
+// only safe if passed safeClone data
 export const logStringify = (data: unknown): string => {
   try {
-    const result = stringify(safeClone(data))
+    const result = stringify(data)
     return result ?? `"${UNAVAILABLE_MARKER}"`
   } catch {
     return `"${UNAVAILABLE_MARKER}"`
@@ -119,14 +120,14 @@ const afterThisFrame = (cb: () => void) => {
 let isPatched = false
 
 export const logQueue: {
-  entries: Array<LogEntry>
+  entries: Array<ClientLogEntry>
   onSocketReady: (socket: WebSocket) => void
   flushScheduled: boolean
   socket: WebSocket | null
   cancelFlush: (() => void) | null
   sourceType?: 'server' | 'edge-server'
   router: 'app' | 'pages' | null
-  scheduleLogSend: (entry: LogEntry) => void
+  scheduleLogSend: (entry: ClientLogEntry) => void
 } = {
   entries: [],
   flushScheduled: false,
@@ -134,7 +135,7 @@ export const logQueue: {
   socket: null,
   sourceType: undefined,
   router: null,
-  scheduleLogSend: (entry: LogEntry) => {
+  scheduleLogSend: (entry: ClientLogEntry) => {
     logQueue.entries.push(entry)
     if (logQueue.flushScheduled) {
       return
@@ -155,7 +156,23 @@ export const logQueue: {
       try {
         const payload = JSON.stringify({
           event: 'browser-logs',
-          entries: logQueue.entries,
+          entries: logQueue.entries.map((clientEntry) => {
+            switch (clientEntry.kind) {
+              case 'any-logged-error':
+              case 'console': {
+                return {
+                  ...clientEntry,
+                  args: clientEntry.args.map(stringifyUserArg),
+                }
+              }
+              case 'formatted-error': {
+                return clientEntry
+              }
+              default: {
+                return null!
+              }
+            }
+          }),
           router: logQueue.router,
           // needed for source mapping, we just assign the sourceType from the last error for the whole batch
           sourceType: logQueue.sourceType,
@@ -197,6 +214,25 @@ export const logQueue: {
   },
 }
 
+const stringifyUserArg = (
+  arg:
+    | {
+        kind: 'arg'
+        data: unknown
+      }
+    | {
+        kind: 'formatted-error-arg'
+      }
+) => {
+  if (arg.kind !== 'arg') {
+    return arg
+  }
+  return {
+    ...arg,
+    data: logStringify(arg.data),
+  }
+}
+
 const createErrorArg = (error: Error) => {
   const stack = stackWithOwners(error)
   return {
@@ -211,7 +247,7 @@ const createLogEntry = (level: LogMethod, args: any[]) => {
   const stack = stackWithOwners(new Error())
   const stackLines = stack?.split('\n')
   const cleanStack = stackLines?.slice(3).join('\n')
-  const entry: ConsoleEntry = {
+  const entry: ConsoleEntry<unknown> = {
     kind: 'console',
     consoleMethodStack: cleanStack ?? null, // depending on browser we might not have stack
     method: level,
@@ -221,7 +257,8 @@ const createLogEntry = (level: LogMethod, args: any[]) => {
       }
       return {
         kind: 'arg',
-        data: logStringify(arg),
+        // data: logStringify(arg),
+        data: safeClone(arg),
       }
     }),
   }
@@ -247,7 +284,7 @@ export const forwardErrorLog = (args: any[]) => {
   const stackLines = stack?.split('\n')
   const cleanStack = stackLines?.slice(3).join('\n')
 
-  const entry: ConsoleErrorEntry = {
+  const entry: ConsoleErrorEntry<unknown> = {
     kind: 'any-logged-error',
     method: 'error',
     consoleErrorStack: cleanStack ?? '',
@@ -257,7 +294,7 @@ export const forwardErrorLog = (args: any[]) => {
       }
       return {
         kind: 'arg',
-        data: arg,
+        data: safeClone(arg),
       }
     }),
   }
@@ -305,7 +342,7 @@ const createUnhandledRejectionErrorEntry = (
     logQueue.sourceType = source
   }
 
-  const entry: LogEntry = {
+  const entry: ClientLogEntry = {
     kind: 'formatted-error',
     prefix: `⨯ unhandledRejection: ${error.name}: ${error.message}`,
     stack: fullStack,
@@ -316,7 +353,7 @@ const createUnhandledRejectionErrorEntry = (
 }
 
 const createUnhandledRejectionNonErrorEntry = (reason: unknown) => {
-  const entry: LogEntry = {
+  const entry: ClientLogEntry = {
     kind: 'any-logged-error',
     // we can't access the stack since the event is dispatched async and creating an inline error would be meaningless
     consoleErrorStack: '',
@@ -329,7 +366,7 @@ const createUnhandledRejectionNonErrorEntry = (reason: unknown) => {
       },
       {
         kind: 'arg',
-        data: logStringify(reason),
+        data: safeClone(reason),
       },
     ],
   }
