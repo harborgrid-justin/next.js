@@ -244,7 +244,6 @@ export async function createHotReloaderTurbopack(
       encryptionKey,
       previewProps: opts.fsChecker.prerenderManifest.preview,
       browserslistQuery: supportedBrowsers.join(', '),
-      hasRewrites,
       noMangling: false,
       currentNodeJsVersion,
     },
