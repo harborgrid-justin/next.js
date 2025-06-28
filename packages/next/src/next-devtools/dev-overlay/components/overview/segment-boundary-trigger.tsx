@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState, useRef, useLayoutEffect } from 'react'
 import type { SegmentNodeState } from '../../../userspace/app/segment-explorer-node'
 
 export function SegmentBoundaryTrigger({
@@ -7,6 +7,49 @@ export function SegmentBoundaryTrigger({
   onSelectBoundary: SegmentNodeState['setBoundaryType']
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  const updateDropdownPosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + 6, // 6px padding-top from original styles
+        right: window.innerWidth - rect.right,
+      })
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updateDropdownPosition()
+    }
+  }, [isOpen, updateDropdownPosition])
+
+  const handlePointerEnter = useCallback(() => {
+    setIsOpen(true)
+    updateDropdownPosition()
+  }, [updateDropdownPosition])
+
+  const handlePointerLeave = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      const relatedTarget = e.relatedTarget
+      if (
+        relatedTarget instanceof HTMLElement &&
+        (relatedTarget.closest('.segment-boundary-dropdown-backdrop') ||
+          relatedTarget.closest('.segment-boundary-trigger-button'))
+      ) {
+        return
+      }
+
+      // This will only auto close for mouse leave,
+      // but preserve for touch events.
+      if (e.pointerType === 'mouse') {
+        setIsOpen(false)
+      }
+    },
+    []
+  )
 
   const triggerOptions = [
     { label: 'Trigger Loading', value: 'loading', icon: <LoadingIcon /> },
@@ -44,8 +87,10 @@ export function SegmentBoundaryTrigger({
         <ResetIcon />
       </button>
       <button
+        ref={triggerRef}
         className="segment-boundary-trigger-button"
-        onPointerEnter={() => setIsOpen(true)}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
         type="button"
       >
         <DropdownIcon />
@@ -53,13 +98,11 @@ export function SegmentBoundaryTrigger({
       {isOpen && (
         <div
           className="segment-boundary-dropdown-backdrop"
-          onPointerLeave={(e) => {
-            // This will only auto close for mouse leave,
-            // but preserve for touch events.
-            if (e.pointerType === 'mouse') {
-              setIsOpen(false)
-            }
+          style={{
+            top: dropdownPosition.top - 6, // Extend upward to cover the gap
+            right: dropdownPosition.right,
           }}
+          onPointerLeave={handlePointerLeave}
         >
           <div className="segment-boundary-dropdown">
             {triggerOptions.map((option) => (
@@ -237,15 +280,14 @@ export const styles = `
     background: var(--color-gray-400);
   }
   .segment-boundary-dropdown-backdrop {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    padding-top: 12px;
+    position: fixed;
     z-index: 3;
+    padding-top: 6px;
   }
 
   .segment-boundary-dropdown {
-    background: var(--color-background);
+    padding: 8px;
+    background: var(--color-background-100);
     border: 1px solid var(--color-gray-400);
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -256,7 +298,9 @@ export const styles = `
     display: flex;
     align-items: center;
     padding: 10px 8px;
+    line-height: 20px;
     font-size: 14px;
+    border-radius: 6px;
     color: var(--color-gray-800);
     cursor: pointer;
   }
