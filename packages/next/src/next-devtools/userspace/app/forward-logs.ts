@@ -389,6 +389,23 @@ const isHMR = (args: any[]) => {
 
   return false
 }
+const isServerLog = (args: any[]) => {
+  if (args.length < 3) {
+    return false
+  }
+
+  const [format, styles, label] = args
+
+  if (
+    typeof format !== 'string' ||
+    typeof styles !== 'string' ||
+    typeof label !== 'string'
+  ) {
+    return false
+  }
+
+  return format.startsWith('%c%s%c') && label.trim() === 'Server'
+}
 
 export function forwardUnhandledError(error: Error) {
   createUncaughtErrorEntry(error.name, error.message, stackWithOwners(error))
@@ -410,7 +427,10 @@ export const initializeDebugLogForwarding = (router: 'app' | 'pages'): void => {
     methods.forEach((method) =>
       patchConsoleMethod(method, (_, ...args) => {
         if (isHMR(args)) {
-          return false
+          return
+        }
+        if (isServerLog(args)) {
+          return
         }
         createLogEntry(method, args)
       })

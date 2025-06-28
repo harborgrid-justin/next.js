@@ -72,7 +72,7 @@ export function patchConsoleMethod<T extends keyof Console>(
   wrapper: (
     methodName: T,
     ...args: Console[T] extends (...args: infer P) => any ? P : never[]
-  ) => boolean | void
+  ) => void
 ): () => void {
   const descriptor = Object.getOwnPropertyDescriptor(console, methodName)
   if (
@@ -90,10 +90,9 @@ export function patchConsoleMethod<T extends keyof Console>(
       this: typeof console,
       ...args: Console[T] extends (...args: infer P) => any ? P : never[]
     ) {
-      const shouldCallOriginal = wrapper(methodName, ...args)
-      if (shouldCallOriginal !== false) {
-        originalMethod.apply(this, args)
-      }
+      wrapper(methodName, ...args)
+
+      originalMethod.apply(this, args)
     }
     if (originalName) {
       Object.defineProperty(wrapperMethod, 'name', originalName)
