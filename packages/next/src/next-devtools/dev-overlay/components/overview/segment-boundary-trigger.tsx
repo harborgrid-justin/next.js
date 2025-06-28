@@ -3,8 +3,10 @@ import type { SegmentNodeState } from '../../../userspace/app/segment-explorer-n
 
 export function SegmentBoundaryTrigger({
   onSelectBoundary,
+  offset,
 }: {
   onSelectBoundary: SegmentNodeState['setBoundaryType']
+  offset: number
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 })
@@ -14,11 +16,11 @@ export function SegmentBoundaryTrigger({
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
       setDropdownPosition({
-        top: rect.bottom + 6, // 6px padding-top from original styles
+        top: rect.bottom + offset,
         right: window.innerWidth - rect.right,
       })
     }
-  }, [])
+  }, [offset])
 
   useLayoutEffect(() => {
     if (isOpen) {
@@ -36,8 +38,12 @@ export function SegmentBoundaryTrigger({
       const relatedTarget = e.relatedTarget
       if (
         relatedTarget instanceof HTMLElement &&
-        (relatedTarget.closest('.segment-boundary-dropdown-backdrop') ||
-          relatedTarget.closest('.segment-boundary-trigger-button'))
+        (relatedTarget.closest(
+          '[data-nextjs-dev-overlay-segment-boundary-dropdown-backdrop]'
+        ) ||
+          relatedTarget.closest(
+            '[data-nextjs-dev-overlay-segment-boundary-trigger-button]'
+          ))
       ) {
         return
       }
@@ -89,6 +95,7 @@ export function SegmentBoundaryTrigger({
       <button
         ref={triggerRef}
         className="segment-boundary-trigger-button"
+        data-nextjs-dev-overlay-segment-boundary-trigger-button
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
         type="button"
@@ -98,9 +105,11 @@ export function SegmentBoundaryTrigger({
       {isOpen && (
         <div
           className="segment-boundary-dropdown-backdrop"
+          data-nextjs-dev-overlay-segment-boundary-dropdown-backdrop
           style={{
-            top: dropdownPosition.top - 6, // Extend upward to cover the gap
+            top: dropdownPosition.top - offset, // Extend upward to cover the gap
             right: dropdownPosition.right,
+            paddingTop: offset, // Visual spacing while backdrop covers the gap
           }}
           onPointerLeave={handlePointerLeave}
         >
@@ -282,7 +291,6 @@ export const styles = `
   .segment-boundary-dropdown-backdrop {
     position: fixed;
     z-index: 3;
-    padding-top: 6px;
   }
 
   .segment-boundary-dropdown {

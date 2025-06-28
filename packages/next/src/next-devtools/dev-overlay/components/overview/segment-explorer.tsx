@@ -173,6 +173,7 @@ function PageSegmentTreeLayerPresentation({
                 pageChild &&
                 pageChild.value && (
                   <SegmentBoundaryTrigger
+                    offset={6}
                     onSelectBoundary={pageChild.value.setBoundaryType}
                   />
                 )}
