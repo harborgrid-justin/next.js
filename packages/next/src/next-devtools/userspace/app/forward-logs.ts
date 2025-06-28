@@ -19,16 +19,18 @@ const terminalLoggingConfig = getTerminalLoggingConfig()
 export const PROMISE_MARKER = 'Promise {}'
 export const UNAVAILABLE_MARKER = '[Unable to view]'
 
+const maximumDepth =
+  typeof terminalLoggingConfig === 'object' && terminalLoggingConfig.depthLimit
+    ? terminalLoggingConfig.depthLimit
+    : 5
+const maximumBreadth =
+  typeof terminalLoggingConfig === 'object' && terminalLoggingConfig.edgeLimit
+    ? terminalLoggingConfig.edgeLimit
+    : 100
+
 const stringify = configure({
-  maximumDepth:
-    typeof terminalLoggingConfig === 'object' &&
-    terminalLoggingConfig.depthLimit
-      ? terminalLoggingConfig.depthLimit
-      : 5,
-  maximumBreadth:
-    typeof terminalLoggingConfig === 'object' && terminalLoggingConfig.edgeLimit
-      ? terminalLoggingConfig.edgeLimit
-      : 100,
+  maximumDepth,
+  maximumBreadth,
 })
 
 const methods: Array<LogMethod> = [
@@ -257,7 +259,6 @@ const createLogEntry = (level: LogMethod, args: any[]) => {
       }
       return {
         kind: 'arg',
-        // data: logStringify(arg),
         data: safeClone(arg),
       }
     }),
@@ -411,13 +412,13 @@ export function forwardUnhandledError(error: Error) {
   createUncaughtErrorEntry(error.name, error.message, stackWithOwners(error))
 }
 
-// todo: this router check is brittle, we need to update based on the current router the user is using
+// TODO: this router check is brittle, we need to update based on the current router the user is using
 export const initializeDebugLogForwarding = (router: 'app' | 'pages'): void => {
   // probably don't need this
   if (isPatched) {
     return
   }
-  // todo(rob): why does this break rendering on server, important to know incase the same bug appears in browser
+  // TODO(rob): why does this break rendering on server, important to know incase the same bug appears in browser
   if (typeof window === 'undefined') {
     return
   }
