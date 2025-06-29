@@ -17,7 +17,6 @@ import type { NextConfigComplete } from '../server/config-shared'
 import { defaultOverrides } from '../server/require-hook'
 import { hasExternalOtelApiPackage } from './webpack-config'
 import { NEXT_PROJECT_ROOT } from './next-dir-paths'
-import { WEBPACK_LAYERS } from '../lib/constants'
 import { shouldUseReactServerCondition } from './utils'
 
 interface CompilerAliases {
@@ -259,88 +258,236 @@ export function createAppRouterApiAliases(isServerOnlyLayer: boolean) {
   return aliasMap
 }
 
-export function createRSCAliases(
-  bundledReactChannel: string,
+// file:///./../compiled/react/package.json
+type ReactEntrypoint = 'jsx-runtime' | 'jsx-dev-runtime' | 'compiler-runtime'
+// file:///./../compiled/react-dom/package.json
+type ReactDOMEntrypoint =
+  | 'client'
+  | 'server'
+  | 'server.edge'
+  | 'server.browser'
+  // TOOD: server.node
+  | 'static'
+  | 'static.browser'
+  | 'static.edge'
+// TODO: static.node
+
+// file:///./../compiled/react-server-dom-webpack/package.json
+type ReactServerDOMWebpackEntrypoint =
+  | 'client'
+  // TODO: client.browser
+  | 'client.edge'
+  // TODO: client.node
+  // TODO: server
+  // TODO: server.browser
+  | 'server.edge'
+  | 'server.node'
+  // TODO: static
+  // TODO: static.browser
+  | 'static.edge'
+// TODO: static.node
+
+type ReactEntryPoints =
+  | 'react'
+  | `react/${ReactEntrypoint}`
+  | 'react-dom'
+  | `react-dom/${ReactDOMEntrypoint}`
+  | `react-server-dom-webpack/${ReactServerDOMWebpackEntrypoint}`
+
+type BundledReactChannel = '' | '-experimental'
+
+type ReactAliases = {
+  [K in `${ReactEntryPoints}$`]: string
+} & {
+  // Edge Runtime does not use next-server runtime.
+  // This means we rely on rewritten import sources in compiled React.
+  // We need to alias those rewritten import sources.
+  [K in
+    | `next/dist/compiled/react${BundledReactChannel}$`
+    | `next/dist/compiled/react${BundledReactChannel}/${ReactEntrypoint}$`
+    | `next/dist/compiled/react-dom${BundledReactChannel}$`]?: string
+}
+
+export function createAppAliases(
+  bundledReactChannel: BundledReactChannel,
   {
     layer,
+    isBrowser,
     isEdgeServer,
     reactProductionProfiling,
   }: {
     layer: WebpackLayerName
+    isBrowser: boolean
     isEdgeServer: boolean
     reactProductionProfiling: boolean
   }
 ): CompilerAliases {
-  let alias: Record<string, string> = {
-    react$: `next/dist/compiled/react${bundledReactChannel}`,
-    'react-dom$': `next/dist/compiled/react-dom${bundledReactChannel}`,
-    'react/jsx-runtime$': `next/dist/compiled/react${bundledReactChannel}/jsx-runtime`,
-    'react/jsx-dev-runtime$': `next/dist/compiled/react${bundledReactChannel}/jsx-dev-runtime`,
-    'react/compiler-runtime$': `next/dist/compiled/react${bundledReactChannel}/compiler-runtime`,
-    'react-dom/client$': `next/dist/compiled/react-dom${bundledReactChannel}/client`,
-    'react-dom/server$': `next/dist/compiled/react-dom${bundledReactChannel}/server`,
-    'react-dom/server.browser$': `next/dist/compiled/react-dom${bundledReactChannel}/server.browser`,
-    'react-dom/static$': `next/dist/compiled/react-dom${bundledReactChannel}/static`,
-    'react-dom/static.edge$': `next/dist/compiled/react-dom${bundledReactChannel}/static.edge`,
-    'react-dom/static.browser$': `next/dist/compiled/react-dom${bundledReactChannel}/static.browser`,
-    // optimizations to ignore the legacy build of react-dom/server in `server.edge` build
-    'react-dom/server.edge$': `next/dist/build/webpack/alias/react-dom-server-edge${bundledReactChannel}.js`,
-    // react-server-dom-webpack alias
-    'react-server-dom-webpack/client$': `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client`,
-    'react-server-dom-webpack/client.edge$': `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client.edge`,
-    'react-server-dom-webpack/server.edge$': `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.edge`,
-    'react-server-dom-webpack/server.node$': `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.node`,
-    'react-server-dom-webpack/static.edge$': `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/static.edge`,
-  }
+  const environmentCondition = isBrowser
+    ? 'browser'
+    : isEdgeServer
+      ? 'edge'
+      : 'nodejs'
+  const reactConditon = shouldUseReactServerCondition(layer)
+    ? 'server'
+    : 'client'
 
-  if (!isEdgeServer) {
-    if (layer === WEBPACK_LAYERS.serverSideRendering) {
-      alias = Object.assign(alias, {
-        'react/jsx-runtime$': `next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-runtime`,
-        'react/jsx-dev-runtime$': `next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime`,
-        'react/compiler-runtime$': `next/dist/server/route-modules/app-page/vendored/ssr/react-compiler-runtime`,
-        react$: `next/dist/server/route-modules/app-page/vendored/ssr/react`,
-        'react-dom$': `next/dist/server/route-modules/app-page/vendored/ssr/react-dom`,
-        'react-server-dom-webpack/client.edge$': `next/dist/server/route-modules/app-page/vendored/ssr/react-server-dom-webpack-client-edge`,
-      })
-    } else if (shouldUseReactServerCondition(layer)) {
-      alias = Object.assign(alias, {
-        'react/jsx-runtime$': `next/dist/server/route-modules/app-page/vendored/rsc/react-jsx-runtime`,
-        'react/jsx-dev-runtime$': `next/dist/server/route-modules/app-page/vendored/rsc/react-jsx-dev-runtime`,
-        'react/compiler-runtime$': `next/dist/server/route-modules/app-page/vendored/rsc/react-compiler-runtime`,
-        react$: `next/dist/server/route-modules/app-page/vendored/rsc/react`,
-        'react-dom$': `next/dist/server/route-modules/app-page/vendored/rsc/react-dom`,
-        'react-server-dom-webpack/server.edge$': `next/dist/server/route-modules/app-page/vendored/rsc/react-server-dom-webpack-server-edge`,
-        'react-server-dom-webpack/server.node$': `next/dist/server/route-modules/app-page/vendored/rsc/react-server-dom-webpack-server-node`,
-        'react-server-dom-webpack/static.edge$': `next/dist/server/route-modules/app-page/vendored/rsc/react-server-dom-webpack-static-edge`,
-      })
-    }
-  }
+  let reactAlias: ReactAliases
 
-  if (isEdgeServer) {
-    if (shouldUseReactServerCondition(layer)) {
-      alias = Object.assign(alias, {
-        react$: `next/dist/compiled/react${bundledReactChannel}/react.react-server`,
-        'next/dist/compiled/react$': `next/dist/compiled/react${bundledReactChannel}/react.react-server`,
-        'next/dist/compiled/react-experimental$': `next/dist/compiled/react-experimental/react.react-server`,
-        'react/jsx-runtime$': `next/dist/compiled/react${bundledReactChannel}/jsx-runtime.react-server`,
-        'react/compiler-runtime$': `next/dist/compiled/react${bundledReactChannel}/compiler-runtime`,
-        'next/dist/compiled/react/jsx-runtime$': `next/dist/compiled/react${bundledReactChannel}/jsx-runtime.react-server`,
-        'next/dist/compiled/react-experimental/jsx-runtime$': `next/dist/compiled/react-experimental/jsx-runtime.react-server`,
-        'react/jsx-dev-runtime$': `next/dist/compiled/react${bundledReactChannel}/jsx-dev-runtime.react-server`,
-        'next/dist/compiled/react/jsx-dev-runtime$': `next/dist/compiled/react${bundledReactChannel}/jsx-dev-runtime.react-server`,
-        'next/dist/compiled/react-experimental/jsx-dev-runtime$': `next/dist/compiled/react-experimental/jsx-dev-runtime.react-server`,
-        'react-dom$': `next/dist/compiled/react-dom${bundledReactChannel}/react-dom.react-server`,
-        'next/dist/compiled/react-dom$': `next/dist/compiled/react-dom${bundledReactChannel}/react-dom.react-server`,
-        'next/dist/compiled/react-dom-experimental$': `next/dist/compiled/react-dom-experimental/react-dom.react-server`,
-      })
+  if (environmentCondition === 'browser') {
+    if (reactConditon === 'server') {
+      throw new Error(
+        'React Server is not supported in browser builds. This is a bug in Next.js.'
+      )
     }
+    // prettier-ignore
+    reactAlias = {
+      // file:///./../compiled/react/package.json
+      react$:                                  /* ✅ */ `next/dist/compiled/react${bundledReactChannel}`,
+      'react/jsx-runtime$':                    /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/jsx-runtime`,
+      'react/jsx-dev-runtime$':                /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/jsx-dev-runtime`,
+      'react/compiler-runtime$':               /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/compiler-runtime`,
+      // file:///./../compiled/react-dom/package.json
+      'react-dom$':                            /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}`,
+      'react-dom/client$':                     /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/client`,
+      'react-dom/server$':                     /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/server`,
+      'react-dom/server.browser$':             /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/server.browser`,
+      'react-dom/static$':                     /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/static`,
+      'react-dom/static.edge$':                /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.edge`,
+      'react-dom/static.browser$':             /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.browser`,
+      // optimizations to ignore the legacy build of react-dom/server in `server.edge` build
+      'react-dom/server.edge$':                /* ❌ */ `next/dist/build/webpack/alias/react-dom-server-edge${bundledReactChannel}.js`,
+      // file:///./../compiled/react-server-dom-webpack/package.json
+      'react-server-dom-webpack/client$':      /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client`,
+      'react-server-dom-webpack/client.edge$': /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client.edge`,
+      'react-server-dom-webpack/server.edge$': /* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.edge`,
+      'react-server-dom-webpack/server.node$': /* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.node`,
+      'react-server-dom-webpack/static.edge$': /* ❌ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/static.edge`,
+    }
+  } else if (environmentCondition === 'nodejs' && reactConditon === 'client') {
+    // prettier-ignore
+    reactAlias = {
+      // file:///./../compiled/react/package.json
+      'react/jsx-runtime$':                   /* ✅ */ `next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-runtime`,
+      'react/jsx-dev-runtime$':               /* ✅ */ `next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime`,
+      'react/compiler-runtime$':              /* ✅ */ `next/dist/server/route-modules/app-page/vendored/ssr/react-compiler-runtime`,
+      react$:                                 /* ✅ */ `next/dist/server/route-modules/app-page/vendored/ssr/react`,
+      // file:///./../compiled/react-dom/package.json
+      'react-dom$':                           /* ✅ */ `next/dist/server/route-modules/app-page/vendored/ssr/react-dom`,
+      'react-dom/client$':                    /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/client`,
+      'react-dom/server$':                    /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/server`,
+      'react-dom/server.browser$':            /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/server.browser`,
+      // optimizations to ignore the legacy build of react-dom/server in `server.edge` build
+      'react-dom/server.edge$':               /* ✅ */`next/dist/build/webpack/alias/react-dom-server-edge${bundledReactChannel}.js`,
+      'react-dom/static$':                    /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static`, 
+      'react-dom/static.edge$':               /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.edge`,
+      'react-dom/static.browser$':            /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.browser`,
+      // file:///./../compiled/react-server-dom-webpack/package.json
+      'react-server-dom-webpack/client$':     /* ❔ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client`,
+      'react-server-dom-webpack/client.edge$':/* ✅ */ `next/dist/server/route-modules/app-page/vendored/ssr/react-server-dom-webpack-client-edge`,
+      'react-server-dom-webpack/server.edge$':/* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.edge`,
+      'react-server-dom-webpack/server.node$':/* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.node`,
+      'react-server-dom-webpack/static.edge$':/* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/static.edge`,
+    }
+  } else if (environmentCondition === 'nodejs' && reactConditon === 'server') {
+    // prettier-ignore
+    reactAlias = {
+      // file:///./../compiled/react/package.json
+      react$:                                  /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/react`,
+      'react/jsx-runtime$':                    /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/react-jsx-runtime`,
+      'react/jsx-dev-runtime$':                /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/jsx-dev-runtime`,
+      'react/compiler-runtime$':               /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/compiler-runtime`,
+      // file:///./../compiled/react-dom/package.json
+      'react-dom$':                            /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/react-dom`,
+      'react-dom/client$':                     /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/client`,
+      'react-dom/server$':                     /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/server`,
+      'react-dom/server.browser$':             /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/server.browser`,
+      'react-dom/static$':                     /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static`,
+      'react-dom/static.edge$':                /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.edge`,
+      'react-dom/static.browser$':             /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.browser`,
+      // optimizations to ignore the legacy build of react-dom/server in `server.edge` build
+      'react-dom/server.edge$':                /* ❔ */ `next/dist/build/webpack/alias/react-dom-server-edge${bundledReactChannel}.js`,
+      // file:///./../compiled/react-server-dom-webpack/package.json
+      'react-server-dom-webpack/client$':      /* ❔ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client`,
+      'react-server-dom-webpack/client.edge$': /* ❔ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client.edge`,
+      'react-server-dom-webpack/server.edge$': /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/react-server-dom-webpack-server-edge`,
+      'react-server-dom-webpack/server.node$': /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/react-server-dom-webpack-server-node`,
+      'react-server-dom-webpack/static.edge$': /* ✅ */ `next/dist/server/route-modules/app-page/vendored/rsc/react-server-dom-webpack-static-edge`,
+    }
+  } else if (environmentCondition === 'edge' && reactConditon === 'client') {
+    // prettier-ignore
+    reactAlias = {
+      // file:///./../compiled/react/package.json
+      react$:                                  /* ✅ */ `next/dist/compiled/react${bundledReactChannel}`,
+      'react/jsx-runtime$':                    /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/jsx-runtime`,
+      'react/jsx-dev-runtime$':                /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/jsx-dev-runtime`,
+      'react/compiler-runtime$':               /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/compiler-runtime`,
+      // file:///./../compiled/react-dom/package.json
+      'react-dom$':                            /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}`,
+      'react-dom/client$':                     /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/client`,
+      'react-dom/server$':                     /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/server`,
+      'react-dom/server.browser$':             /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/server.browser`,
+      'react-dom/static$':                     /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/static`,
+      'react-dom/static.edge$':                /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.edge`,
+      'react-dom/static.browser$':             /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.browser`,
+      // optimizations to ignore the legacy build of react-dom/server in `server.edge` build
+      'react-dom/server.edge$':                /* ✅ */ `next/dist/build/webpack/alias/react-dom-server-edge${bundledReactChannel}.js`,
+      // file:///./../compiled/react-server-dom-webpack/package.json
+      'react-server-dom-webpack/client$':      /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client`,
+      'react-server-dom-webpack/client.edge$': /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client.edge`,
+      'react-server-dom-webpack/server.edge$': /* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.edge`,
+      'react-server-dom-webpack/server.node$': /* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.node`,
+      'react-server-dom-webpack/static.edge$': /* ❌  */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/static.edge`,
+    }
+  } else if (environmentCondition === 'edge' && reactConditon === 'server') {
+    // prettier-ignore
+    reactAlias = {
+      // file:///./../compiled/react/package.json
+      react$:                                  /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/react.react-server`,
+      'react/jsx-runtime$':                    /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/jsx-runtime.react-server`,
+      'react/jsx-dev-runtime$':                /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/jsx-dev-runtime.react-server`,
+      'react/compiler-runtime$':               /* ✅ */ `next/dist/compiled/react${bundledReactChannel}/compiler-runtime`,
+      // file:///./../compiled/react-dom/package.json
+      'react-dom$':                            /* ✅ */ `next/dist/compiled/react-dom${bundledReactChannel}/react-dom.react-server`,
+      'react-dom/client$':                     /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/client`,
+      'react-dom/server$':                     /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/server`,
+      'react-dom/server.browser$':             /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/server.browser`,
+      'react-dom/static$':                     /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static`,
+      'react-dom/static.edge$':                /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.edge`,
+      'react-dom/static.browser$':             /* ❔ */ `next/dist/compiled/react-dom${bundledReactChannel}/static.browser`,
+      // optimizations to ignore the legacy build of react-dom/server in `server.edge` build
+      'react-dom/server.edge$':                /* ❔ */ `next/dist/build/webpack/alias/react-dom-server-edge${bundledReactChannel}.js`,
+      // file:///./../compiled/react-server-dom-webpack/package.json
+      'react-server-dom-webpack/client$':      /* ❔ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client`,
+      'react-server-dom-webpack/client.edge$': /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/client.edge`,
+      'react-server-dom-webpack/server.edge$': /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.edge`,
+      'react-server-dom-webpack/server.node$': /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/server.node`,
+      'react-server-dom-webpack/static.edge$': /* ✅ */ `next/dist/compiled/react-server-dom-webpack${bundledReactChannel}/static.edge`,
+    }
+
+    reactAlias[`next/dist/compiled/react${bundledReactChannel}$`] =
+      reactAlias.react$
+    reactAlias[`next/dist/compiled/react${bundledReactChannel}/jsx-runtime$`] =
+      reactAlias[`react/jsx-runtime$`]
+    reactAlias[
+      `next/dist/compiled/react${bundledReactChannel}/jsx-dev-runtime$`
+    ] = reactAlias[`react/jsx-dev-runtime$`]
+    reactAlias[
+      `next/dist/compiled/react${bundledReactChannel}/compiler-runtime$`
+    ] = reactAlias[`react/compiler-runtime$`]
+    reactAlias[`next/dist/compiled/react-dom${bundledReactChannel}$`] =
+      reactAlias[`react-dom$`]
+  } else {
+    throw new Error(
+      `Unsupported environment condition "${environmentCondition}" and react condition "${reactConditon}". This is a bug in Next.js.`
+    )
   }
 
   if (reactProductionProfiling) {
-    alias['react-dom/client$'] =
+    reactAlias['react-dom/client$'] =
       `next/dist/compiled/react-dom${bundledReactChannel}/profiling`
   }
+
+  const alias: CompilerAliases = reactAlias
 
   alias[
     '@vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts'
