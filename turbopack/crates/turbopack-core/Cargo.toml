@@ -35,6 +35,7 @@ serde_json = { workspace = true, features = ["preserve_order"] }
 smallvec = { workspace = true }
 swc_sourcemap = { workspace = true }
 swc_core = { workspace = true, features = ["ecma_preset_env", "common"] }
+tokio = { workspace = true, features = ["time", "sync"] }
 tracing = { workspace = true }
 turbo-prehash = { workspace = true }
 turbo-rcstr = { workspace = true }
@@ -43,6 +44,8 @@ turbo-tasks-env = { workspace = true }
 turbo-tasks-fs = { workspace = true }
 turbo-tasks-hash = { workspace = true }
 urlencoding = { workspace = true }
+uuid = { version = "1.0", features = ["v4"] }
+rand = { workspace = true }
 bytes-str = { workspace = true }
 
 [build-dependencies]
