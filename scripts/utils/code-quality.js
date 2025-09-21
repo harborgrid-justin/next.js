@@ -217,6 +217,11 @@ class CodeQualityAnalyzer {
       }
     }
 
+    // Analyze lines for common issues (includes console.log detection)
+    const lines = content.split('\n')
+    const lineIssues = this.analyzeLines(lines, filePath)
+    issues.push(...lineIssues)
+
     return issues
   }
 

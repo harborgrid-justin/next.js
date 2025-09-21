@@ -214,27 +214,7 @@ class MockManager {
       calls: [],
       implementation: implementation || (() => {}),
       callsCount: 0,
-      called: false,
-      
-      mockReturnValue(value) {
-        this.implementation = () => value
-        return this
-      },
-      
-      mockImplementation(fn) {
-        this.implementation = fn
-        return this
-      },
-      
-      mockResolvedValue(value) {
-        this.implementation = () => Promise.resolve(value)
-        return this
-      },
-      
-      mockRejectedValue(error) {
-        this.implementation = () => Promise.reject(error)
-        return this
-      }
+      called: false
     }
 
     const mockFn = (...args) => {
@@ -244,8 +224,33 @@ class MockManager {
       return mock.implementation(...args)
     }
 
-    // Copy mock methods to function
-    Object.assign(mockFn, mock)
+    // Add mock methods to function with proper context binding
+    mockFn.mockReturnValue = (value) => {
+      mock.implementation = () => value
+      return mockFn
+    }
+    
+    mockFn.mockImplementation = (fn) => {
+      mock.implementation = fn
+      return mockFn
+    }
+    
+    mockFn.mockResolvedValue = (value) => {
+      mock.implementation = () => Promise.resolve(value)
+      return mockFn
+    }
+    
+    mockFn.mockRejectedValue = (error) => {
+      mock.implementation = () => Promise.reject(error)
+      return mockFn
+    }
+
+    // Copy other properties
+    mockFn.calls = mock.calls
+    mockFn.callsCount = mock.callsCount
+    Object.defineProperty(mockFn, 'called', {
+      get() { return mock.called }
+    })
     
     this.mocks.set(name, mockFn)
     return mockFn

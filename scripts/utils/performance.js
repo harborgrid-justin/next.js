@@ -648,8 +648,16 @@ class PerformanceManager {
     })
 
     // Active handles and requests
-    this.collector.gauge('handles.active', (process as any)._getActiveHandles().length)
-    this.collector.gauge('requests.active', (process as any)._getActiveRequests().length)
+    try {
+      if (process._getActiveHandles && typeof process._getActiveHandles === 'function') {
+        this.collector.gauge('handles.active', process._getActiveHandles().length)
+      }
+      if (process._getActiveRequests && typeof process._getActiveRequests === 'function') {
+        this.collector.gauge('requests.active', process._getActiveRequests().length)
+      }
+    } catch (error) {
+      // Gracefully handle if these internal APIs are not available
+    }
   }
 
   /**
