@@ -1,4 +1,55 @@
 use std::fmt::{Display, Formatter, Result};
+use serde::{Deserialize, Serialize};
+
+/// Enterprise-grade structured error context for better debugging and monitoring
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ErrorContext {
+    pub operation: String,
+    pub component: String,
+    pub severity: ErrorSeverity,
+    pub timestamp: u64,
+    pub correlation_id: Option<String>,
+    pub metadata: std::collections::HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ErrorSeverity {
+    Low,
+    Medium, 
+    High,
+    Critical,
+}
+
+impl ErrorContext {
+    pub fn new(operation: impl Into<String>, component: impl Into<String>) -> Self {
+        Self {
+            operation: operation.into(),
+            component: component.into(),
+            severity: ErrorSeverity::Medium,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            correlation_id: None,
+            metadata: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn with_severity(mut self, severity: ErrorSeverity) -> Self {
+        self.severity = severity;
+        self
+    }
+
+    pub fn with_correlation_id(mut self, id: impl Into<String>) -> Self {
+        self.correlation_id = Some(id.into());
+        self
+    }
+
+    pub fn with_metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+}
 
 /// Implements [Display] to print the error message in a friendly way.
 /// Puts a summary first and details after that.
