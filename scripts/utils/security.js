@@ -119,6 +119,212 @@ class InputValidator {
 
     return { name, value }
   }
+
+  /**
+   * Comprehensive data validation and sanitization
+   */
+  static validateAndSanitize(data, schema) {
+    const result = {}
+    const errors = []
+
+    // Check required fields
+    if (schema.required) {
+      for (const field of schema.required) {
+        if (!(field in data)) {
+          errors.push(`Missing required field: ${field}`)
+        }
+      }
+    }
+
+    // Validate types and sanitize
+    if (schema.types) {
+      for (const [field, type] of Object.entries(schema.types)) {
+        if (field in data) {
+          try {
+            result[field] = this.validateField(data[field], type, field)
+          } catch (error) {
+            errors.push(`Field ${field}: ${error.message}`)
+          }
+        }
+      }
+    }
+
+    // Copy non-typed fields if allowed
+    if (schema.allowAdditional !== false) {
+      for (const [key, value] of Object.entries(data)) {
+        if (!(key in result) && (!schema.types || !(key in schema.types))) {
+          result[key] = this.sanitizeGeneric(value)
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Validation failed: ${errors.join(', ')}`)
+    }
+
+    return result
+  }
+
+  static validateField(value, type, fieldName) {
+    switch (type) {
+      case 'string':
+        return this.sanitizeString(value)
+      case 'number':
+        return this.sanitizeNumber(value)
+      case 'email':
+        return this.validateEmail(value)
+      case 'url':
+        return this.sanitizeUrl(value)
+      case 'object':
+        return this.sanitizeObject(value)
+      case 'array':
+        return Array.isArray(value) ? value.map(v => this.sanitizeGeneric(v)) : []
+      case 'boolean':
+        return Boolean(value)
+      default:
+        throw new Error(`Unknown type: ${type}`)
+    }
+  }
+
+  static validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      throw new Error('Invalid email format')
+    }
+    return email.trim().toLowerCase()
+  }
+
+  static sanitizeString(str, options = {}) {
+    if (typeof str !== 'string') {
+      str = String(str)
+    }
+
+    str = str.trim()
+
+    // Length validation
+    if (options.maxLength && str.length > options.maxLength) {
+      str = str.substring(0, options.maxLength)
+    }
+
+    if (options.minLength && str.length < options.minLength) {
+      throw new Error(`String too short: ${str.length} < ${options.minLength}`)
+    }
+
+    // HTML/Script tag removal for security
+    str = str.replace(/<[^>]*>/g, '')
+    
+    // SQL injection prevention
+    str = str.replace(/['";\\]/g, '')
+
+    return str
+  }
+
+  static sanitizeNumber(num, options = {}) {
+    num = Number(num)
+    
+    if (isNaN(num)) {
+      if (options.default !== undefined) {
+        return options.default
+      }
+      throw new Error('Invalid number')
+    }
+
+    if (options.min !== undefined && num < options.min) {
+      return options.min
+    }
+
+    if (options.max !== undefined && num > options.max) {
+      return options.max
+    }
+
+    return num
+  }
+
+  static sanitizeObject(obj, options = {}) {
+    if (typeof obj !== 'object' || obj === null) {
+      return {}
+    }
+
+    const sanitized = {}
+
+    for (const [key, value] of Object.entries(obj)) {
+      // Check allowed keys
+      if (options.allowedKeys && !options.allowedKeys.includes(key)) {
+        continue
+      }
+
+      // Recursion depth check
+      if (options.maxDepth && options.currentDepth >= options.maxDepth) {
+        continue
+      }
+
+      sanitized[this.sanitizeString(key)] = this.sanitizeGeneric(value, {
+        ...options,
+        currentDepth: (options.currentDepth || 0) + 1
+      })
+    }
+
+    return sanitized
+  }
+
+  static sanitizeGeneric(value, options = {}) {
+    if (value === null || value === undefined) {
+      return null
+    }
+
+    if (typeof value === 'string') {
+      return this.sanitizeString(value, options)
+    }
+
+    if (typeof value === 'number') {
+      return this.sanitizeNumber(value, options)
+    }
+
+    if (typeof value === 'boolean') {
+      return Boolean(value)
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(v => this.sanitizeGeneric(v, options))
+    }
+
+    if (typeof value === 'object') {
+      return this.sanitizeObject(value, options)
+    }
+
+    return value
+  }
+
+  static hashObject(obj) {
+    const crypto = require('crypto')
+    const str = JSON.stringify(obj, Object.keys(obj).sort())
+    return crypto.createHash('sha256').update(str).digest('hex').substring(0, 16)
+  }
+
+  static validateJWT(token) {
+    // Simplified JWT validation - in production, use a proper JWT library
+    if (!token || typeof token !== 'string') {
+      throw new Error('Invalid token format')
+    }
+
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format')
+    }
+
+    try {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
+      
+      // Check expiration
+      if (payload.exp && payload.exp < Date.now() / 1000) {
+        throw new Error('Token expired')
+      }
+
+      return payload
+    } catch (error) {
+      throw new Error('Invalid JWT token')
+    }
+  }
 }
 
 /**

@@ -19,6 +19,7 @@ pub mod context;
 pub mod data_uri_source;
 pub mod diagnostics;
 pub mod docs;
+pub mod enterprise;
 pub mod environment;
 pub mod error;
 pub mod file_source;

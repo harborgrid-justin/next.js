@@ -415,6 +415,73 @@ class NextJSErrorHandlingService extends BuildErrorHandler {
 
     return this.handleError(error, enhancedContext)
   }
+
+  /**
+   * Enterprise error aggregation and analytics
+   */
+  getErrorAnalytics(timeWindow = 3600000) { // 1 hour default
+    const now = Date.now()
+    const windowStart = now - timeWindow
+    
+    const recentErrors = this.errorLog.filter(error => 
+      new Date(error.timestamp).getTime() >= windowStart
+    )
+    
+    return {
+      totalErrors: recentErrors.length,
+      errorsByType: this.groupErrorsByType(recentErrors),
+      errorsBySeverity: this.groupErrorsBySeverity(recentErrors),
+      errorTrends: this.calculateErrorTrends(recentErrors, timeWindow),
+      topErrors: this.getTopErrors(recentErrors),
+      errorRate: recentErrors.length / (timeWindow / 60000) // errors per minute
+    }
+  }
+
+  groupErrorsByType(errors) {
+    return errors.reduce((acc, error) => {
+      acc[error.type] = (acc[error.type] || 0) + 1
+      return acc
+    }, {})
+  }
+
+  groupErrorsBySeverity(errors) {
+    return errors.reduce((acc, error) => {
+      acc[error.severity] = (acc[error.severity] || 0) + 1
+      return acc
+    }, {})
+  }
+
+  calculateErrorTrends(errors, timeWindow) {
+    const bucketSize = timeWindow / 10 // 10 buckets
+    const buckets = Array(10).fill(0)
+    const now = Date.now()
+    
+    errors.forEach(error => {
+      const errorTime = new Date(error.timestamp).getTime()
+      const bucketIndex = Math.floor((now - errorTime) / bucketSize)
+      if (bucketIndex >= 0 && bucketIndex < 10) {
+        buckets[9 - bucketIndex]++ // Most recent bucket is at the end
+      }
+    })
+    
+    return buckets
+  }
+
+  getTopErrors(errors, limit = 5) {
+    const errorCounts = errors.reduce((acc, error) => {
+      const key = `${error.type}:${error.message}`
+      if (!acc[key]) {
+        acc[key] = { count: 0, error: error }
+      }
+      acc[key].count++
+      return acc
+    }, {})
+    
+    return Object.values(errorCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+      .map(item => ({ ...item.error, occurrences: item.count }))
+  }
 }
 
 module.exports = { 
