@@ -744,11 +744,323 @@ function getPerformanceManager(options) {
   return globalPerformanceManager
 }
 
+/**
+ * Advanced Production Deployment Monitor
+ * Enterprise improvement #46: Real-time deployment health monitoring
+ */
+class DeploymentMonitor {
+  constructor(options = {}) {
+    this.deploymentId = options.deploymentId || `deploy-${Date.now()}`
+    this.healthChecks = new Map()
+    this.metrics = {
+      startTime: Date.now(),
+      uptime: 0,
+      deploymentStatus: 'initializing',
+      healthScore: 100,
+      errors: [],
+      warnings: []
+    }
+    this.checkInterval = options.checkInterval || 30000 // 30 seconds
+    this.isMonitoring = false
+  }
+
+  /**
+   * Start deployment monitoring
+   */
+  startMonitoring() {
+    if (this.isMonitoring) return
+
+    this.isMonitoring = true
+    this.metrics.deploymentStatus = 'running'
+    
+    this.monitoringInterval = setInterval(() => {
+      this.runHealthChecks()
+    }, this.checkInterval)
+
+    return this.deploymentId
+  }
+
+  /**
+   * Add a health check
+   */
+  addHealthCheck(name, checkFunction, options = {}) {
+    this.healthChecks.set(name, {
+      name,
+      check: checkFunction,
+      enabled: true,
+      critical: options.critical || false,
+      timeout: options.timeout || 5000,
+      lastCheck: null,
+      lastResult: null,
+      failureCount: 0
+    })
+  }
+
+  /**
+   * Run all health checks
+   */
+  async runHealthChecks() {
+    const results = {
+      timestamp: new Date().toISOString(),
+      healthy: [],
+      unhealthy: [],
+      warnings: []
+    }
+
+    this.metrics.uptime = Date.now() - this.metrics.startTime
+
+    for (const [name, check] of this.healthChecks) {
+      if (!check.enabled) continue
+
+      try {
+        const result = await Promise.race([
+          check.check(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Health check timeout')), check.timeout)
+          )
+        ])
+
+        check.lastCheck = Date.now()
+        check.lastResult = result
+        check.failureCount = 0
+
+        if (result.healthy) {
+          results.healthy.push({ name, status: 'healthy', ...result })
+        } else {
+          results.unhealthy.push({ name, status: 'unhealthy', ...result })
+          if (check.critical) {
+            this.metrics.healthScore -= 20
+          } else {
+            this.metrics.healthScore -= 5
+          }
+        }
+      } catch (error) {
+        check.failureCount++
+        results.unhealthy.push({
+          name,
+          status: 'error',
+          error: error.message
+        })
+        
+        if (check.critical) {
+          this.metrics.deploymentStatus = 'degraded'
+        }
+      }
+    }
+
+    // Ensure health score doesn't go below 0
+    this.metrics.healthScore = Math.max(0, this.metrics.healthScore)
+    
+    return results
+  }
+
+  /**
+   * Get deployment status
+   */
+  getStatus() {
+    return {
+      deploymentId: this.deploymentId,
+      status: this.metrics.deploymentStatus,
+      healthScore: this.metrics.healthScore,
+      uptime: this.metrics.uptime,
+      checks: this.healthChecks.size
+    }
+  }
+
+  /**
+   * Stop monitoring
+   */
+  stopMonitoring() {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval)
+    }
+    this.isMonitoring = false
+    this.metrics.deploymentStatus = 'stopped'
+  }
+}
+
+/**
+ * Advanced Performance Profiler
+ * Enterprise improvement #47: Deep performance profiling and optimization
+ */
+class AdvancedProfiler {
+  constructor() {
+    this.profiles = new Map()
+    this.samplingInterval = 100 // ms
+    this.isActive = false
+    this.samples = []
+  }
+
+  /**
+   * Start profiling a specific operation
+   */
+  startProfiling(name, options = {}) {
+    const profile = {
+      name,
+      startTime: process.hrtime.bigint(),
+      startCPU: process.cpuUsage(),
+      startMemory: process.memoryUsage(),
+      samples: [],
+      options: {
+        sampleMemory: options.sampleMemory !== false,
+        sampleCPU: options.sampleCPU !== false,
+        sampleInterval: options.sampleInterval || this.samplingInterval
+      }
+    }
+
+    this.profiles.set(name, profile)
+    
+    if (profile.options.sampleMemory || profile.options.sampleCPU) {
+      this.startSampling(profile)
+    }
+
+    return {
+      end: () => this.endProfiling(name)
+    }
+  }
+
+  /**
+   * Start sampling system metrics
+   */
+  startSampling(profile) {
+    if (profile.samplingInterval) {
+      clearInterval(profile.samplingInterval)
+    }
+
+    profile.samplingInterval = setInterval(() => {
+      const sample = {
+        timestamp: Date.now()
+      }
+
+      if (profile.options.sampleMemory) {
+        sample.memory = process.memoryUsage()
+      }
+
+      if (profile.options.sampleCPU) {
+        sample.cpu = process.cpuUsage()
+      }
+
+      profile.samples.push(sample)
+    }, profile.options.sampleInterval)
+  }
+
+  /**
+   * End profiling and return results
+   */
+  endProfiling(name) {
+    const profile = this.profiles.get(name)
+    if (!profile) return null
+
+    const endTime = process.hrtime.bigint()
+    const endCPU = process.cpuUsage(profile.startCPU)
+    const endMemory = process.memoryUsage()
+
+    // Stop sampling
+    if (profile.samplingInterval) {
+      clearInterval(profile.samplingInterval)
+    }
+
+    const duration = Number(endTime - profile.startTime) / 1000000 // Convert to ms
+
+    const results = {
+      name,
+      duration,
+      cpu: {
+        user: endCPU.user,
+        system: endCPU.system
+      },
+      memory: {
+        start: profile.startMemory,
+        end: endMemory,
+        peak: this.calculatePeakMemory(profile.samples),
+        delta: {
+          rss: endMemory.rss - profile.startMemory.rss,
+          heapUsed: endMemory.heapUsed - profile.startMemory.heapUsed,
+          heapTotal: endMemory.heapTotal - profile.startMemory.heapTotal
+        }
+      },
+      samples: profile.samples.length,
+      timestamp: new Date().toISOString()
+    }
+
+    // Generate optimization recommendations
+    results.recommendations = this.generateOptimizationRecommendations(results)
+
+    this.profiles.delete(name)
+    return results
+  }
+
+  /**
+   * Calculate peak memory usage from samples
+   */
+  calculatePeakMemory(samples) {
+    let peak = { rss: 0, heapUsed: 0, heapTotal: 0 }
+    
+    for (const sample of samples) {
+      if (sample.memory) {
+        peak.rss = Math.max(peak.rss, sample.memory.rss)
+        peak.heapUsed = Math.max(peak.heapUsed, sample.memory.heapUsed)
+        peak.heapTotal = Math.max(peak.heapTotal, sample.memory.heapTotal)
+      }
+    }
+    
+    return peak
+  }
+
+  /**
+   * Generate optimization recommendations
+   */
+  generateOptimizationRecommendations(results) {
+    const recommendations = []
+
+    // Duration-based recommendations
+    if (results.duration > 1000) {
+      recommendations.push({
+        type: 'performance',
+        severity: 'high',
+        message: `Operation took ${results.duration.toFixed(2)}ms, consider optimization`,
+        suggestion: 'Profile for bottlenecks, consider caching or async processing'
+      })
+    }
+
+    // Memory-based recommendations
+    if (results.memory.delta.heapUsed > 50 * 1024 * 1024) { // 50MB
+      recommendations.push({
+        type: 'memory',
+        severity: 'medium',
+        message: `High memory allocation: ${(results.memory.delta.heapUsed / 1024 / 1024).toFixed(2)}MB`,
+        suggestion: 'Check for memory leaks or excessive object creation'
+      })
+    }
+
+    // CPU-based recommendations
+    if (results.cpu.user > 100000) { // 100ms of user CPU time
+      recommendations.push({
+        type: 'cpu',
+        severity: 'medium',
+        message: `High CPU usage: ${(results.cpu.user / 1000).toFixed(2)}ms user time`,
+        suggestion: 'Consider algorithmic improvements or async processing'
+      })
+    }
+
+    return recommendations
+  }
+
+  /**
+   * Get active profiles
+   */
+  getActiveProfiles() {
+    return Array.from(this.profiles.keys())
+  }
+}
+
 module.exports = {
   PerformanceCollector,
   MemoryOptimizer,
   CPUOptimizer,
   IOOptimizer,
   PerformanceManager,
+  DeploymentMonitor,
+  AdvancedProfiler,
   getPerformanceManager
 }
