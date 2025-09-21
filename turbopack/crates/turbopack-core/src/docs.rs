@@ -213,9 +213,7 @@
 /// 14. Code organization improvements
 /// 15. And many more...
 
-pub mod examples;
-pub mod best_practices;
-pub mod troubleshooting;
+pub mod examples {
     //! Code examples demonstrating enterprise patterns
     
     /// Example of proper error context usage
